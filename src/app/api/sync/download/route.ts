@@ -19,6 +19,8 @@ export async function OPTIONS() {
  *  - maxBytes=<int>  : batas ukuran per batch (default 3 MB)
  * Respons: {ok, records:[...], nextCursor, selesai, total}
  * Format records = persis berkas transfer aplikasi, langsung digabung tanpa file manager.
+ * Bila user ditugaskan di kebun tertentu (lihat menu Pengguna di web), hanya
+ * transaksi kebun itu yang dikirim ke HP — data kebun lain tidak ikut.
  */
 export async function GET(req: Request) {
   const settings = await getSettings()
@@ -36,6 +38,10 @@ export async function GET(req: Request) {
 
   const f: RecordFilter = { dariMs }
   const where = recordWhere(f)
+
+  // Pengguna yang ditugaskan di kebun tertentu hanya menerima transaksi kebun itu
+  const kebunUser = (tk.user.kebun || '').trim()
+  if (kebunUser) where.kebun = kebunUser
 
   const total = await db.dataRecord.count({ where })
   const batch = await db.dataRecord.findMany({
@@ -63,7 +69,7 @@ export async function GET(req: Request) {
     await logAudit(
       { uid: tk.userId, username: tk.user.username },
       'SYNC_DOWNLOAD',
-      `${count} transaksi (cursor ${nextCursor}/${total})`
+      `${count} transaksi (cursor ${nextCursor}/${total})${kebunUser ? ` — kebun ${kebunUser}` : ''}`
     )
   }
 

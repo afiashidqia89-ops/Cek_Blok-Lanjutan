@@ -12,6 +12,8 @@ export async function POST(req: Request) {
     name?: string
     tanggalFrom?: string
     tanggalTo?: string
+    kebun?: string
+    afdeling?: string
     blok?: string
     pemeriksa?: string
     withPhoto?: boolean
@@ -28,6 +30,8 @@ export async function POST(req: Request) {
       name: String(body.name || 'Berkas Cek Blok').slice(0, 80),
       tanggalFrom: String(body.tanggalFrom || ''),
       tanggalTo: String(body.tanggalTo || ''),
+      kebun: String(body.kebun || ''),
+      afdeling: String(body.afdeling || ''),
       blok: String(body.blok || ''),
       pemeriksa: String(body.pemeriksa || ''),
       withPhoto: body.withPhoto !== false,

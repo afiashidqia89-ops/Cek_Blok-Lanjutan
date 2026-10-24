@@ -21,9 +21,10 @@ import {
 import { UserPlus, Pencil, Trash2, ShieldCheck, ShieldOff } from 'lucide-react'
 
 interface UserRow {
-  id: string; username: string; name: string; role: 'ADMIN' | 'USER'; isActive: boolean;
+  id: string; username: string; name: string; role: 'ADMIN' | 'USER'; isActive: boolean; kebun: string;
   createdAt: string; _count: { records: number; tokens: number }
 }
+interface Facet { kebun: string; estate: string }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[] | null>(null)
@@ -35,6 +36,7 @@ export default function UsersPage() {
   const [fName, setFName] = useState('')
   const [fPassword, setFPassword] = useState('')
   const [fRole, setFRole] = useState('USER')
+  const [fKebun, setFKebun] = useState('')
   const [adding, setAdding] = useState(false)
 
   const [edit, setEdit] = useState<UserRow | null>(null)
@@ -42,7 +44,10 @@ export default function UsersPage() {
   const [eRole, setERole] = useState('USER')
   const [eActive, setEActive] = useState(true)
   const [ePassword, setEPassword] = useState('')
+  const [eKebun, setEKebun] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const [kebunOpts, setKebunOpts] = useState<Facet[]>([])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -55,6 +60,10 @@ export default function UsersPage() {
   useEffect(() => {
     load()
     fetch('/api/auth/me').then((r) => r.json()).then((d) => setMe(d.user || null))
+    // daftar kebun untuk dropdown penugasan (dari Data Master)
+    fetch('/api/master?facets=1').then((r) => r.json()).then((d) => {
+      if (d.ok) setKebunOpts(d.facets || [])
+    }).catch(() => {})
   }, [load])
 
   async function addUser() {
@@ -63,25 +72,25 @@ export default function UsersPage() {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: fUsername, name: fName, password: fPassword, role: fRole }),
+        body: JSON.stringify({ username: fUsername, name: fName, password: fPassword, role: fRole, kebun: fKebun }),
       })
       const d = await res.json()
       if (!res.ok || !d.ok) { toast.error(d.error || 'Gagal membuat user'); return }
-      toast.success(`Pengguna ${fUsername} terdaftar`)
-      setAddOpen(false); setFUsername(''); setFName(''); setFPassword(''); setFRole('USER')
+      toast.success(`Pengguna ${fUsername} terdaftar${fKebun ? ` (kebun ${fKebun})` : ''}`)
+      setAddOpen(false); setFUsername(''); setFName(''); setFPassword(''); setFRole('USER'); setFKebun('')
       load()
     } finally { setAdding(false) }
   }
 
   function openEdit(u: UserRow) {
-    setEdit(u); setEName(u.name); setERole(u.role); setEActive(u.isActive); setEPassword('')
+    setEdit(u); setEName(u.name); setERole(u.role); setEActive(u.isActive); setEPassword(''); setEKebun(u.kebun || '')
   }
 
   async function saveEdit() {
     if (!edit) return
     setSaving(true)
     try {
-      const body: Record<string, unknown> = { name: eName, role: eRole, isActive: eActive }
+      const body: Record<string, unknown> = { name: eName, role: eRole, isActive: eActive, kebun: eKebun }
       if (ePassword) body.password = ePassword
       const res = await fetch(`/api/admin/users/${edit.id}`, {
         method: 'PATCH',
@@ -124,6 +133,7 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead>Username</TableHead>
                   <TableHead>Nama</TableHead>
+                  <TableHead>Kebun</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data</TableHead>
@@ -134,13 +144,20 @@ export default function UsersPage() {
               <TableBody>
                 {loading && [0, 1, 2].map((i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (<TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>))}
+                    {Array.from({ length: 8 }).map((_, j) => (<TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>))}
                   </TableRow>
                 ))}
                 {!loading && users?.map((u) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">@{u.username}</TableCell>
                     <TableCell>{u.name}</TableCell>
+                    <TableCell>
+                      {u.kebun ? (
+                        <Badge variant="secondary" className="bg-green-50 text-green-800">Kebun {u.kebun}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Semua kebun</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={u.role === 'ADMIN' ? 'default' : 'secondary'}
                         className={u.role === 'ADMIN' ? 'bg-green-700' : ''}>
@@ -195,6 +212,19 @@ export default function UsersPage() {
               <Input id="np" type="password" value={fPassword} onChange={(e) => setFPassword(e.target.value)} />
             </div>
             <div className="space-y-1.5">
+              <Label>Kebun penugasan</Label>
+              <Select value={fKebun || 'semua'} onValueChange={(v) => setFKebun(v === 'semua' ? '' : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semua">Semua kebun (tanpa batasan)</SelectItem>
+                  {kebunOpts.map((f) => (<SelectItem key={f.kebun} value={f.kebun}>{f.kebun} — {f.estate}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Di HP, user ini hanya melihat blok &amp; data kebun yang dipilih (muat dulu Data Master bila daftar kosong).
+              </p>
+            </div>
+            <div className="space-y-1.5">
               <Label>Role</Label>
               <Select value={fRole} onValueChange={setFRole}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -235,6 +265,19 @@ export default function UsersPage() {
                   <SelectItem value="ADMIN">Admin (kontrol penuh)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Kebun penugasan</Label>
+              <Select value={eKebun || 'semua'} onValueChange={(v) => setEKebun(v === 'semua' ? '' : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semua">Semua kebun (tanpa batasan)</SelectItem>
+                  {(eKebun && !kebunOpts.some((f) => f.kebun === eKebun) ? [{ kebun: eKebun, estate: '(kebun lama)' }, ...kebunOpts] : kebunOpts).map((f) => (
+                    <SelectItem key={f.kebun} value={f.kebun}>{f.kebun}{f.estate ? ` — ${f.estate}` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Mengatur daftar blok &amp; data yang diterima user ini di aplikasi HP.</p>
             </div>
             <div className="flex items-center justify-between rounded-md border p-3">
               <div>

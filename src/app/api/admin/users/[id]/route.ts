@@ -14,7 +14,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const target = await db.user.findUnique({ where: { id } })
   if (!target) return NextResponse.json({ ok: false, error: 'User tidak ditemukan' }, { status: 404 })
 
-  let body: { name?: string; role?: string; isActive?: boolean; password?: string }
+  let body: { name?: string; role?: string; isActive?: boolean; password?: string; kebun?: string }
   try {
     body = await req.json()
   } catch {
@@ -23,6 +23,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
   const data: Record<string, unknown> = {}
   if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim()
+  if (typeof body.kebun === 'string') data.kebun = body.kebun.trim().toUpperCase()
   if (body.role === 'ADMIN' || body.role === 'USER') {
     if (target.id === admin.uid && body.role === 'USER') {
       return NextResponse.json({ ok: false, error: 'Tidak bisa menurunkan role akun sendiri' }, { status: 400 })
@@ -48,7 +49,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const user = await db.user.update({
     where: { id },
     data,
-    select: { id: true, username: true, name: true, role: true, isActive: true },
+    select: { id: true, username: true, name: true, role: true, isActive: true, kebun: true },
   })
   await logAudit(admin, 'UBAH_USER', `username: ${target.username}, fields: ${Object.keys(data).join(',')}`)
   return NextResponse.json({ ok: true, user })

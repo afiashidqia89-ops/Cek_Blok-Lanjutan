@@ -1,13 +1,16 @@
-// Skema database - Server Cek Blok
-// Catatan produksi: untuk deploy ke Vercel/Netlify (serverless), ganti provider
-// menjadi "postgresql" (lihat prisma/schema.postgres.prisma + docs/PANDUAN-DEPLOY.md)
+// Skema database untuk PRODUKSI serverless (Vercel / Netlify) memakai
+// PostgreSQL gratis dari Neon (neon.tech) atau Supabase (supabase.com).
+//
+// Cara pakai:
+//   bash scripts/use-postgres.sh
+// lalu set DATABASE_URL di .env / dashboard hosting ke URL PostgreSQL Anda.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -17,33 +20,34 @@ model User {
   name         String
   passwordHash String
   role         String        @default("USER") // ADMIN | USER
+  kebun        String        @default("") // kebun tempat user ditugaskan (kosong = semua kebun)
   isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   records      DataRecord[]
   tokens       DeviceToken[]
   exports      DataExport[]
+  mapLayers    MapLayer[]
 }
 
-// Satu baris = satu transaksi pemeriksaan blok (record dari aplikasi Cek Blok)
 model DataRecord {
-  id             String   @id @default(cuid())
-  trfKey         String   @unique // kunci deduplikasi: kodeTransaksi|pemeriksa|savedAt
-  kodeTransaksi  String   @default("")
-  tanggal        String   @default("") // YYYY-MM-DD (string, sesuai format aplikasi)
-  pemeriksa      String   @default("")
-  estate         String   @default("") // PT / Estate
-  kebun          String   @default("")
-  afdeling       String   @default("")
-  blok           String   @default("")
-  status         String   @default("")
-  savedAt        Float? // epoch ms dari perangkat
-  payload        String // JSON lengkap satu record (termasuk details, GPS, foto)
-  perangkat      String   @default("") // nama HP sumber
-  sizeBytes      Int      @default(0)
-  uploadedById   String?
-  uploadedBy     User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  trfKey        String   @unique
+  kodeTransaksi String   @default("")
+  tanggal       String   @default("")
+  pemeriksa     String   @default("")
+  estate        String   @default("")
+  kebun         String   @default("")
+  afdeling      String   @default("")
+  blok          String   @default("")
+  status        String   @default("")
+  savedAt       Float?
+  payload       String
+  perangkat     String   @default("")
+  sizeBytes     Int      @default(0)
+  uploadedById  String?
+  uploadedBy    User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
 
   @@index([tanggal])
   @@index([blok])
@@ -52,11 +56,10 @@ model DataRecord {
   @@index([createdAt])
 }
 
-// Token perangkat: dipakai aplikasi Cek Blok (di HP) untuk upload/download ke server
 model DeviceToken {
   id         String    @id @default(cuid())
-  token      String    @unique // cbk_xxxxx...
-  label      String    @default("") // nama HP / keterangan
+  token      String    @unique
+  label      String    @default("")
   isActive   Boolean   @default(true)
   lastUsedAt DateTime?
   userId     String
@@ -66,13 +69,14 @@ model DeviceToken {
   @@index([userId])
 }
 
-// Tautan berbagi publik: berkas transfer siap-import lewat menu "Terima & Gabung Data"
 model DataExport {
   id          String   @id @default(cuid())
   token       String   @unique
   name        String   @default("")
   tanggalFrom String   @default("")
   tanggalTo   String   @default("")
+  kebun       String   @default("")
+  afdeling    String   @default("")
   blok        String   @default("")
   pemeriksa   String   @default("")
   withPhoto   Boolean  @default(true)
@@ -89,11 +93,44 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+// ===== DATA MASTER (DB Aresta): daftar blok per kebun/afdeling =====
+// Satu baris = satu blok. Aplikasi HP mengambil daftar ini lewat
+// /api/sync/master dan hanya menerima blok sesuai kebun user-nya.
+model BlokMaster {
+  id        String   @id @default(cuid())
+  estate    String
+  kebun     String
+  afdeling  String
+  blok      String
+  luas      Float? // luas (ha)
+  pokok     Int? // jumlah pokok
+  updatedAt DateTime @updatedAt
+
+  @@unique([estate, kebun, afdeling, blok])
+  @@index([kebun])
+  @@index([afdeling])
+}
+
+// Lapisan peta (GeoJSON / raster PDF peta) yang tersimpan di server,
+// sehingga semua pengguna web memakai peta yang sama tanpa impor ulang.
+model MapLayer {
+  id           String   @id @default(cuid())
+  name         String   @default("")
+  type         String   @default("GEOJSON") // GEOJSON | RASTER (gambar PDF peta)
+  content      String // teks GeoJSON, atau dataURL gambar raster
+  meta         String   @default("") // JSON: transformasi georeferensi, daftar field, dsb.
+  sizeBytes    Int      @default(0)
+  isActive     Boolean  @default(true)
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
   username  String?
-  action    String // LOGIN, LOGIN_GAGAL, BUAT_USER, UPLOAD, DOWNLOAD, dst.
+  action    String
   detail    String   @default("")
   createdAt DateTime @default(now())
 

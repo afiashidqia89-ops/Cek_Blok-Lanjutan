@@ -110,6 +110,8 @@ export interface RecordFilter {
   q?: string
   tanggalFrom?: string
   tanggalTo?: string
+  kebun?: string
+  afdeling?: string
   blok?: string
   pemeriksa?: string
   perangkat?: string
@@ -136,6 +138,8 @@ export function recordWhere(f: RecordFilter): Prisma.DataRecordWhereInput {
     if (f.tanggalFrom) w.tanggal.gte = f.tanggalFrom
     if (f.tanggalTo) w.tanggal.lte = f.tanggalTo
   }
+  if (f.kebun) w.kebun = { contains: f.kebun }
+  if (f.afdeling) w.afdeling = { contains: f.afdeling }
   if (f.blok) w.blok = { contains: f.blok }
   if (f.pemeriksa) w.pemeriksa = { contains: f.pemeriksa }
   if (f.perangkat) w.perangkat = { contains: f.perangkat }

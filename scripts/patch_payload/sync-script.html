@@ -1,0 +1,271 @@
+<script>
+/* ====== Sinkronisasi Server Cek Blok (patch integrasi web server) ====== */
+(function(){
+  var SRV_URL_KEY='cekBlokServerUrl', SRV_TOK_KEY='cekBlokServerToken', SRV_SYNC_KEY='cekBlokServerLastSync', SRV_USER_KEY='cekBlokLoginUser', SRV_KEBUN_KEY='cekBlokKebunUser';
+  function $(id){ return document.getElementById(id); }
+  function cfg(){ var u='',t='',us='',kb=''; try{ u=localStorage.getItem(SRV_URL_KEY)||''; t=localStorage.getItem(SRV_TOK_KEY)||''; us=localStorage.getItem(SRV_USER_KEY)||''; kb=localStorage.getItem(SRV_KEBUN_KEY)||''; }catch(e){} return {u:u,t:t,us:us,kb:kb}; }
+  function norm(u){ return String(u||'').trim().replace(/\/+$/,''); }
+  function setSt(s){ var el=$('srvStatus'); if(el) el.textContent=s; }
+  function tokHeaders(){ var c=cfg(); return { 'Authorization':'Bearer '+c.t, 'Content-Type':'application/json' }; }
+  function openCfg(){ var p=$('srvCfgPanel'); if(!p) return; var c=cfg(); $('srvUrlInput').value=c.u; var ti=$('srvTokenInput'); if(ti) ti.value=c.t; refreshLoginUI(); p.hidden=false; }
+  function perangkat(){ var nm=''; try{ nm=localStorage.getItem('cekBlokNamaPerangkat')||''; }catch(e){} if(!nm){ var p=document.getElementById('pemeriksa'); nm=(p&&p.value||'').trim(); } return nm||'HP'; }
+  function srvLastSync(){ try{ return Number(localStorage.getItem(SRV_SYNC_KEY)||0)||0; }catch(e){ return 0; } }
+  function stripPhoto(r){ return JSON.parse(JSON.stringify(r, function(k,v){ return k==='photo'?'':v; })); }
+
+  /* ====== Kompresi foto sebelum kirim (muat batas 4,5MB server/hosting) ======
+     Foto asli di HP tidak diubah — hanya salinan yang dikirim yang dikompres. */
+  var PH_MAX=1280, PH_Q=0.72, phCache=null;
+  function compressUrl(durl){
+    if(phCache && phCache[durl]) return Promise.resolve(phCache[durl]);
+    return new Promise(function(res){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var sc=Math.min(1, PH_MAX/Math.max(img.width||1, img.height||1));
+          var w=Math.max(1, Math.round((img.width||1)*sc)), h=Math.max(1, Math.round((img.height||1)*sc));
+          var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+          cv.getContext('2d').drawImage(img,0,0,w,h);
+          var out=cv.toDataURL('image/jpeg',PH_Q);
+          if(out && out.length>30 && out.length<durl.length){ if(!phCache) phCache={}; phCache[durl]=out; res(out); }
+          else res(durl);
+        }catch(e){ res(durl); }
+      };
+      img.onerror=function(){ res(durl); };
+      img.src=durl;
+    });
+  }
+  function collectPhotos(o,acc){
+    if(!o||typeof o!=='object') return acc;
+    if(Array.isArray(o)){ for(var i=0;i<o.length;i++) collectPhotos(o[i],acc); return acc; }
+    for(var k in o){
+      if(!Object.prototype.hasOwnProperty.call(o,k)) continue;
+      var v=o[k];
+      if(k==='photo'&&typeof v==='string'&&v.slice(0,11)==='data:image/') acc.push({obj:o,val:v});
+      else if(v&&typeof v==='object') collectPhotos(v,acc);
+    }
+    return acc;
+  }
+  async function prepRows(rows, onProg){
+    var out=[];
+    for(var i=0;i<rows.length;i++){
+      if(onProg&&i%2===0) onProg(i,rows.length);
+      var s=JSON.stringify(rows[i]);
+      if(s.indexOf('"data:image/')<0){ out.push(rows[i]); continue; }   /* tanpa foto: lewati */
+      var copy=JSON.parse(s);
+      var acc=collectPhotos(copy,[]);
+      for(var j=0;j<acc.length;j++){ acc[j].obj.photo=await compressUrl(acc[j].val); }
+      out.push(copy);
+    }
+    return out;
+  }
+
+  async function srvSend(){
+    var c=cfg();
+    if(!c.u||!c.t){ openCfg(); alert('Isi dulu alamat server dan token perangkat.\nToken dibuat di web admin: menu Token Perangkat.'); return; }
+    if(!records().length){ alert('Belum ada data transaksi untuk dikirim.'); return; }
+    var btn=$('srvSendBtn'); btn.disabled=true; var old=btn.textContent; btn.textContent='Mengirim…';
+    setSt('Menyiapkan data (mengompres foto)…');
+    try{
+      var rows=await prepRows(records().slice(), function(i,n){ setSt('Mengompres foto transaksi '+(i+1)+' dari '+n+'…'); });
+      phCache=null;
+      var CH=3*1024*1024, groups=[], cur=[], sz=0;
+      rows.forEach(function(r){ var s=JSON.stringify(r); if(cur.length&&sz+s.length>CH){ groups.push(cur); cur=[]; sz=0; } cur.push(r); sz+=s.length; });
+      if(cur.length) groups.push(cur);
+      var terima=0, baru=0, dup=0, tanpaFoto=false;
+      for(var i=0;i<groups.length;i++){
+        setSt('Mengirim bagian '+(i+1)+' dari '+groups.length+'…');
+        var payload={ app:'cekblok-transfer', v:1, perangkat:perangkat(), dibuat:Date.now(), foto:!tanpaFoto, bagian:i+1, dari:groups.length, jumlah:groups[i].length, records: tanpaFoto?groups[i].map(stripPhoto):groups[i] };
+        var res=await fetch(norm(c.u)+'/api/sync/upload', { method:'POST', headers:tokHeaders(), body:JSON.stringify(payload) });
+        var j=await res.json().catch(function(){ return {}; });
+        if((!res.ok||!j.ok)&&res.status===413&&!tanpaFoto){
+          tanpaFoto=true; i=-1; terima=0; baru=0; dup=0;   /* ulang semua tanpa foto */
+          continue;
+        }
+        if(!res.ok||!j.ok) throw new Error(j.error||('HTTP '+res.status));
+        terima+=j.diterima||0; baru+=j.baru||0; dup+=j.duplikat||0;
+      }
+      try{ localStorage.setItem(SRV_SYNC_KEY, String(Date.now())); }catch(e){}
+      setSt('Terakhir dikirim: '+new Date().toLocaleString('id-ID')+(tanpaFoto?' (tanpa foto)':' (dengan foto)'));
+      alert('Kirim ke server selesai.\n\nTransaksi diperiksa: '+terima+'\nBaru tersimpan: '+baru+'\nDuplikat dilewati: '+dup+(tanpaFoto?'\n\nCatatan: data dikirim tanpa foto karena ukuran melebihi batas.':'\n\nFoto temuan ikut dikirim (otomatis dikompres agar hemat kuota).'));
+    }catch(err){
+      setSt('Gagal mengirim: '+err.message);
+      alert('Gagal mengirim ke server: '+err.message+'\n\nPeriksa alamat server, token perangkat, dan koneksi internet.');
+    }finally{ btn.disabled=false; btn.textContent=old; }
+  }
+
+  async function srvFetch(){
+    var c=cfg();
+    if(!c.u||!c.t){ openCfg(); alert('Isi dulu alamat server dan token perangkat.'); return; }
+    var btn=$('srvFetchBtn'); btn.disabled=true; var old=btn.textContent; btn.textContent='Mengambil…';
+    setSt('Mengambil data dari server…');
+    try{
+      var cur=records();
+      var keys=new Set(cur.map(function(r,i){ return trfKey(r,i); }));
+      var codes=new Set(cur.map(function(r,i){ return ensureTransactionCode(r,i); }));
+      var toAdd=[], dup=0, cursor=0, totalSrv=0, jagaJeda=0;
+      while(true){
+        setSt('Mengambil data… ('+cursor+(totalSrv?' dari '+totalSrv:'')+')');
+        var res=await fetch(norm(c.u)+'/api/sync/download?cursor='+cursor+'&dari='+srvLastSync(), { headers:tokHeaders() });
+        var j=await res.json().catch(function(){ return {}; });
+        if(!res.ok||!j.ok) throw new Error(j.error||('HTTP '+res.status));
+        totalSrv=j.total||0;
+        var inc=(j.records||[]).filter(function(r){ return r&&typeof r==='object'&&(r.blok||r.tanggal); });
+        for(var k=0;k<inc.length;k++){
+          var rk=trfKey(inc[k],0);
+          if(keys.has(rk)){ dup++; continue; }
+          keys.add(rk);
+          var copy=Object.assign({}, inc[k]);
+          if(!copy.kodeTransaksi) copy.kodeTransaksi=ensureTransactionCode(copy,0);
+          if(codes.has(copy.kodeTransaksi)){ var n=2; while(codes.has(copy.kodeTransaksi+'-'+n)) n++; copy.kodeTransaksi+='-'+n; }
+          codes.add(copy.kodeTransaksi);
+          if(!copy.sumberPerangkat) copy.sumberPerangkat='SERVER';
+          toAdd.push(copy);
+        }
+        if(j.selesai) break;
+        if(j.nextCursor==null||(j.records&&!j.records.length&&j.nextCursor===cursor)) break;
+        cursor=j.nextCursor;
+        if(++jagaJeda>200) break;
+      }
+      if(!toAdd.length){ setSt('Server terkini: tidak ada data baru.'); alert('Tidak ada data baru dari server.\nDuplikat dilewati: '+dup); return; }
+      if(!confirm('Gabungkan '+toAdd.length+' transaksi baru dari server?\nDuplikat dilewati: '+dup)) return;
+      var merged=cur.concat(toAdd).map(function(r,i){ return {r:r,i:i}; })
+        .sort(function(a,b){ return String(a.r.tanggal||'').localeCompare(String(b.r.tanggal||'')) || ((a.r.savedAt||0)-(b.r.savedAt||0)) || (a.i-b.i); })
+        .map(function(x){ return x.r; });
+      var ok=await saveRecords(merged);
+      if(!ok) return;
+      try{ localStorage.setItem(SRV_SYNC_KEY, String(Date.now())); }catch(e){}
+      renderHistory();
+      setSt('Terakhir ambil: '+new Date().toLocaleString('id-ID'));
+      alert('Berhasil: '+toAdd.length+' transaksi baru digabung dari server.\nTotal transaksi sekarang: '+merged.length+'.');
+    }catch(err){
+      setSt('Gagal mengambil: '+err.message);
+      alert('Gagal mengambil dari server: '+err.message);
+    }finally{ btn.disabled=false; btn.textContent=old; }
+  }
+
+  /* ====== Ambil Data Master (daftar blok) dari server ======
+     Server mengirim baris blok SESUAI kebun akun (lihat menu Pengguna di web).
+     Daftar blok di aplikasi diganti dengan hasil dari server, sehingga:
+     - pilihan blok hanya kebun user (bila user ditugaskan)
+     - perubahan Data Master di web (luas, jumlah pokok, blok baru) ikut ke HP. */
+  async function srvMaster(){
+    var c=cfg();
+    if(!c.u||!c.t){ openCfg(); alert('Isi dulu alamat server, lalu Masuk pakai akun web.'); return; }
+    var btn=$('srvMasterBtn'); btn.disabled=true; var old=btn.textContent; btn.textContent='Mengambil…';
+    setSt('Mengambil data master (daftar blok) dari server…');
+    try{
+      var res=await fetch(norm(c.u)+'/api/sync/master', { headers:tokHeaders() });
+      var j=await res.json().catch(function(){ return {}; });
+      if(!res.ok||!j.ok) throw new Error(j.error||('HTTP '+res.status));
+      var rows=j.rows||[];
+      if(!rows.length){
+        setSt('Data master di server masih kosong.');
+        alert('Data master di server masih kosong.\n\nMuat dulu di web admin: menu Data Master → "Muat DB Aresta Bawaan" (atau Impor Data).\nSetelah itu tekan tombol ini lagi.');
+        return;
+      }
+      var kb=j.kebun||'(semua kebun)';
+      if(!confirm('Terapkan data master dari server?\n\n• Akun: '+c.us+'\n• Kebun: '+kb+'\n• Jumlah blok: '+rows.length+'\n\nDaftar blok di aplikasi akan diganti sesuai data terbaru server.')) return;
+      if(!window.cekApplyDb) throw new Error('Mesin DB aplikasi belum siap — buka ulang halaman Riwayat lalu coba lagi.');
+      window.cekApplyDb(rows);
+      try{ localStorage.setItem(SRV_SYNC_KEY, String(Date.now())); }catch(e){}
+      updateKebunInfo();
+      setSt('Data master diperbarui: '+rows.length+' blok ('+kb+') — '+new Date().toLocaleString('id-ID'));
+      alert('Data master berhasil diperbarui.\n\nKebun: '+kb+'\nBlok: '+rows.length+'\n\nBuka form pemeriksaan: pilihan Estate/Kebun/Afdeling/Blok kini memakai data terbaru.');
+    }catch(err){
+      setSt('Gagal ambil data master: '+err.message);
+      alert('Gagal mengambil data master: '+err.message+'\n\nPeriksa alamat server & login, lalu coba lagi.');
+    }finally{ btn.disabled=false; btn.textContent=old; }
+  }
+
+  async function srvTest(){
+    var c=cfg(); var info=$('srvTestInfo');
+    if(!c.u||!c.t){ if(info) info.textContent='Alamat server & token wajib diisi.'; return; }
+    if(info) info.textContent='Menguji…';
+    try{
+      var res=await fetch(norm(c.u)+'/api/sync/status', { headers:tokHeaders() });
+      var j=await res.json().catch(function(){ return {}; });
+      if(!res.ok||!j.ok) throw new Error(j.error||('HTTP '+res.status));
+      var si=c.us?' sebagai '+c.us:'';
+      if(info) info.textContent='Terhubung ✓'+si+' ('+j.totalRecords+' transaksi di server)';
+    }catch(err){ if(info) info.textContent='Gagal: '+err.message; }
+  }
+
+  /* ====== Login pakai akun web (username + password) ====== */
+  function updateKebunInfo(){
+    var c=cfg(), el=$('srvKebunInfo'); if(!el) return;
+    el.textContent = (c.us&&c.t) ? (c.kb ? ('Kebun Anda: '+c.kb+' — daftar blok di aplikasi mengikuti kebun ini (tekan 📚 Ambil Data Master untuk memperbarui).') : 'Lingkup: semua kebun (akun tanpa penugasan kebun).') : '';
+  }
+  function refreshLoginUI(){
+    var c=cfg(), info=$('srvLoginInfo'), lb=$('srvLoginBtn'), lo=$('srvLogoutBtn');
+    updateKebunInfo();
+    if(!info) return;
+    if(c.us&&c.t){
+      info.textContent='Masuk sebagai '+c.us+(c.kb?' (kebun '+c.kb+')':'')+' — token siap dipakai.';
+      if(lb) lb.hidden=true; if(lo) lo.hidden=false;
+    }else{
+      info.textContent=c.u?'Belum masuk. Isi username & password lalu tekan Masuk.':'';
+      if(lb) lb.hidden=false; if(lo) lo.hidden=true;
+    }
+  }
+  async function appLogin(){
+    var u=($('srvUrlInput').value||'').trim(), us=($('srvUserInput').value||'').trim(), pw=($('srvPassInput').value||'');
+    var info=$('srvLoginInfo');
+    if(!u){ alert('Isi dulu alamat server.'); return; }
+    if(!us||!pw){ if(info) info.textContent='Username dan password wajib diisi.'; return; }
+    var lb=$('srvLoginBtn'); lb.disabled=true; var old=lb.textContent; lb.textContent='Memproses…';
+    if(info) info.textContent='Masuk…';
+    try{
+      var res=await fetch(norm(u)+'/api/app/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:us, password:pw, device:perangkat() }) });
+      var j=await res.json().catch(function(){ return {}; });
+      if(!res.ok||!j.ok) throw new Error(j.error||('HTTP '+res.status));
+      try{
+        localStorage.setItem(SRV_URL_KEY, u);
+        localStorage.setItem(SRV_TOK_KEY, String(j.token||''));
+        localStorage.setItem(SRV_USER_KEY, String((j.user&&j.user.username)||us));
+        localStorage.setItem(SRV_KEBUN_KEY, String((j.user&&j.user.kebun)||''));
+      }catch(e){}
+      $('srvPassInput').value='';
+      var ti=$('srvTokenInput'); if(ti) ti.value=String(j.token||'');
+      refreshLoginUI();
+      var nm=(j.user&&j.user.name)?' ('+j.user.name+')':'';
+      var kb=(j.user&&j.user.kebun)?' — Kebun '+j.user.kebun:'';
+      setSt('Masuk sebagai '+us+nm+kb+'. Server: '+u);
+      if(info) info.textContent='Berhasil masuk sebagai '+us+nm+kb+'. Token otomatis dibuat.'+((j.user&&j.user.kebun)?' Tekan 📚 Ambil Data Master agar daftar blok sesuai kebun Anda.':'');
+      srvTest();
+    }catch(err){
+      if(info) info.textContent='Gagal masuk: '+err.message;
+    }finally{ lb.disabled=false; lb.textContent=old; }
+  }
+  function appLogout(){
+    try{ localStorage.removeItem(SRV_TOK_KEY); localStorage.removeItem(SRV_USER_KEY); localStorage.removeItem(SRV_KEBUN_KEY); }catch(e){}
+    var ti=$('srvTokenInput'); if(ti) ti.value='';
+    refreshLoginUI();
+    setSt('Keluar. Token dihapus dari perangkat ini.');
+  }
+
+  function saveCfg(){
+    try{
+      localStorage.setItem(SRV_URL_KEY, ($('srvUrlInput').value||'').trim());
+      localStorage.setItem(SRV_TOK_KEY, ($('srvTokenInput').value||'').trim());
+      var p=$('srvCfgPanel'); if(p) p.hidden=true;
+      setSt('Konfigurasi tersimpan. Server: '+($('srvUrlInput').value||'').trim());
+    }catch(e){ alert('Tidak bisa menyimpan konfigurasi: '+e.message); }
+  }
+
+  function init(){
+    if(!$('srvSendBtn')||!$('serverSyncBox')) return setTimeout(init, 300);
+    $('srvSendBtn').addEventListener('click', srvSend);
+    $('srvFetchBtn').addEventListener('click', srvFetch);
+    var mb=$('srvMasterBtn'); if(mb) mb.addEventListener('click', srvMaster);
+    $('srvCfgBtn').addEventListener('click', openCfg);
+    var sv=$('srvSaveBtn'); if(sv) sv.addEventListener('click', saveCfg);
+    var ts=$('srvTestBtn'); if(ts) ts.addEventListener('click', srvTest);
+    var li=$('srvLoginBtn'); if(li) li.addEventListener('click', appLogin);
+    var lo=$('srvLogoutBtn'); if(lo) lo.addEventListener('click', appLogout);
+    var c=cfg();
+    if(c.us&&c.t) setSt('Masuk sebagai '+c.us+(c.kb?' (kebun '+c.kb+')':'')+'. Server: '+c.u); else if(c.u) setSt('Server: '+c.u);
+    updateKebunInfo();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>

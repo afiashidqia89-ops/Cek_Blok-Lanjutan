@@ -24,11 +24,13 @@ export async function GET(req: Request) {
     q: sp.get('q') || undefined,
     tanggalFrom: sp.get('tanggalFrom') || undefined,
     tanggalTo: sp.get('tanggalTo') || undefined,
+    kebun: sp.get('kebun') || undefined,
+    afdeling: sp.get('afdeling') || undefined,
     blok: sp.get('blok') || undefined,
     pemeriksa: sp.get('pemeriksa') || undefined,
     perangkat: sp.get('perangkat') || undefined,
   }
-  const where: Parameters<typeof db.dataRecord.findMany>[0]['where'] = recordWhere(f)
+  const where = recordWhere(f)
   if (!seeAll) where.uploadedById = s.uid
 
   const select = {

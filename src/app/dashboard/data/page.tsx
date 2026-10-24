@@ -13,6 +13,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
@@ -35,7 +38,9 @@ interface ShareItem {
   downloads: number; createdAt: string
 }
 
-const emptyFilters = { q: '', tanggalFrom: '', tanggalTo: '', blok: '', pemeriksa: '' }
+const emptyFilters = { q: '', tanggalFrom: '', tanggalTo: '', kebun: '', afdeling: '', blok: '', pemeriksa: '' }
+
+interface Facets { kebun: string[]; afdeling: string[]; blok: string[]; pemeriksa: string[] }
 
 function statusColor(s: string): string {
   const st = (s || '').toLowerCase()
@@ -43,6 +48,62 @@ function statusColor(s: string): string {
   if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang')) return 'bg-amber-100 text-amber-800'
   if (st) return 'bg-green-100 text-green-800'
   return 'bg-muted text-muted-foreground'
+}
+
+interface FotoItem { key: string; label: string; sample: number; url: string }
+
+/** Galeri foto temuan satu transaksi (diambil on-demand dari /api/data/[id]/photos) */
+function FotoTemuan({ id }: { id: string }) {
+  const [photos, setPhotos] = useState<FotoItem[] | null>(null)
+  const [zoom, setZoom] = useState<FotoItem | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    fetch(`/api/data/${id}/photos`)
+      .then(r => r.json())
+      .then(d => { if (alive) setPhotos(d.photos || []) })
+      .catch(() => { if (alive) setPhotos([]) })
+    return () => { alive = false }
+  }, [id])
+
+  if (!photos) return <Skeleton className="h-20 w-full" />
+  if (!photos.length) {
+    return (
+      <p className="text-xs text-muted-foreground rounded-md border border-dashed p-3">
+        Tidak ada foto pada transaksi ini. Foto ikut terkirim bila transaksi dikirim dari aplikasi lewat tombol <b>Kirim ke Server</b> (foto dikompres otomatis).
+      </p>
+    )
+  }
+  return (
+    <div>
+      <p className="text-sm font-semibold mb-2">Foto Temuan ({photos.length})</p>
+      <div className="grid grid-cols-3 gap-2">
+        {photos.map((p, i) => (
+          <figure key={`${p.key}-${p.sample}-${i}`} className="space-y-1 min-w-0">
+            <img
+              src={p.url}
+              alt={p.label}
+              loading="lazy"
+              onClick={() => setZoom(p)}
+              className="h-24 w-full rounded-md border object-cover cursor-zoom-in bg-muted"
+            />
+            <figcaption className="text-[11px] text-muted-foreground truncate">{p.label}</figcaption>
+          </figure>
+        ))}
+      </div>
+      {zoom && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/85 flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setZoom(null)}
+        >
+          <div className="max-w-full max-h-full space-y-2" onClick={e => e.stopPropagation()}>
+            <img src={zoom.url} alt={zoom.label} className="max-h-[75vh] max-w-full rounded-lg object-contain mx-auto block" />
+            <p className="text-center text-xs text-white/90">{zoom.label} · ketuk area gelap untuk menutup</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function DataPage() {
@@ -65,6 +126,7 @@ export default function DataPage() {
   const [shareName, setShareName] = useState('Data Pemeriksaan Blok')
   const [shareUrl, setShareUrl] = useState('')
   const [shares, setShares] = useState<ShareItem[]>([])
+  const [facets, setFacets] = useState<Facets>({ kebun: [], afdeling: [], blok: [], pemeriksa: [] })
 
   const load = useCallback(() => {
     setLoading(true)
@@ -77,6 +139,20 @@ export default function DataPage() {
   }, [applied, page])
 
   useEffect(() => { fetch('/api/auth/me').then((r) => r.json()).then((d) => setMe(d.user || null)) }, [])
+  useEffect(() => {
+    // dukung tautan dari halaman Peta: /dashboard/data?blok=...&kebun=...&afdeling=...
+    const sp = new URLSearchParams(window.location.search)
+    const pre = { ...emptyFilters }
+    let ada = false
+    ;(['kebun', 'afdeling', 'blok', 'pemeriksa', 'tanggalFrom', 'tanggalTo'] as const).forEach((k) => {
+      const v = sp.get(k)
+      if (v) { (pre as Record<string, string>)[k] = v; ada = true }
+    })
+    if (ada) { setFilters(pre); setApplied(pre) }
+    fetch('/api/data/facets').then((r) => r.json()).then((d) => {
+      if (d.ok) setFacets({ kebun: d.kebun || [], afdeling: d.afdeling || [], blok: d.blok || [], pemeriksa: d.pemeriksa || [] })
+    }).catch(() => {})
+  }, [])
   useEffect(() => { load() }, [load])
 
   async function loadShares() {
@@ -179,12 +255,32 @@ export default function DataPage() {
 
       <Card className="border-green-100">
         <CardContent className="p-4 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-8">
             <div className="space-y-1.5 lg:col-span-2">
               <Label htmlFor="q">Cari</Label>
               <Input id="q" placeholder="kode, pemeriksa, blok…" value={filters.q}
                 onChange={(e) => setFilters({ ...filters, q: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && applyFilters()} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="fk">Kebun</Label>
+              <Select value={filters.kebun || 'ALL'} onValueChange={(v) => setFilters({ ...filters, kebun: v === 'ALL' ? '' : v })}>
+                <SelectTrigger id="fk"><SelectValue placeholder="Semua" /></SelectTrigger>
+                <SelectContent className="max-h-64">
+                  <SelectItem value="ALL">Semua</SelectItem>
+                  {facets.kebun.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="fa">Afdeling</Label>
+              <Select value={filters.afdeling || 'ALL'} onValueChange={(v) => setFilters({ ...filters, afdeling: v === 'ALL' ? '' : v })}>
+                <SelectTrigger id="fa"><SelectValue placeholder="Semua" /></SelectTrigger>
+                <SelectContent className="max-h-64">
+                  <SelectItem value="ALL">Semua</SelectItem>
+                  {facets.afdeling.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="df">Dari tanggal</Label>
@@ -431,6 +527,7 @@ export default function DataPage() {
                   </div>
                 ))}
               </div>
+              <FotoTemuan id={detail.id} />
               <div>
                 <p className="text-sm font-semibold mb-2">Temuan / Rincian</p>
                 <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-words">

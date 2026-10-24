@@ -22,6 +22,8 @@ export async function GET(req: Request, ctx: Ctx) {
     if (exp.tanggalFrom) (where.tanggal as Record<string, string>).gte = exp.tanggalFrom
     if (exp.tanggalTo) (where.tanggal as Record<string, string>).lte = exp.tanggalTo
   }
+  if (exp.kebun) where.kebun = { contains: exp.kebun }
+  if (exp.afdeling) where.afdeling = { contains: exp.afdeling }
   if (exp.blok) where.blok = { contains: exp.blok }
   if (exp.pemeriksa) where.pemeriksa = { contains: exp.pemeriksa }
 

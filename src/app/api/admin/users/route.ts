@@ -11,7 +11,7 @@ export async function GET() {
   const users = await db.user.findMany({
     orderBy: { createdAt: 'asc' },
     select: {
-      id: true, username: true, name: true, role: true, isActive: true,
+      id: true, username: true, name: true, role: true, isActive: true, kebun: true,
       createdAt: true,
       _count: { select: { records: true, tokens: true } },
     },
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ ok: false, error: 'Khusus admin' }, { status: 403 })
 
-  let body: { username?: string; name?: string; password?: string; role?: string }
+  let body: { username?: string; name?: string; password?: string; role?: string; kebun?: string }
   try {
     body = await req.json()
   } catch {
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
   const name = String(body.name || '').trim() || username
   const password = String(body.password || '')
   const role = body.role === 'ADMIN' ? 'ADMIN' : 'USER'
+  const kebun = String(body.kebun || '').trim().toUpperCase()
 
   if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
     return NextResponse.json(
@@ -49,9 +50,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Username sudah dipakai' }, { status: 409 })
   }
   const user = await db.user.create({
-    data: { username, name, passwordHash: await hashPassword(password), role },
-    select: { id: true, username: true, name: true, role: true, isActive: true, createdAt: true },
+    data: { username, name, passwordHash: await hashPassword(password), role, kebun },
+    select: { id: true, username: true, name: true, role: true, isActive: true, kebun: true, createdAt: true },
   })
-  await logAudit(admin, 'BUAT_USER', `username: ${username}, role: ${role}`)
+  await logAudit(admin, 'BUAT_USER', `username: ${username}, role: ${role}${kebun ? `, kebun: ${kebun}` : ''}`)
   return NextResponse.json({ ok: true, user })
 }

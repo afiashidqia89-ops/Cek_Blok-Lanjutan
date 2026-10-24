@@ -1,0 +1,75 @@
+name: Bangun APK Cek Blok
+
+# Jalankan lewat TOMBOL di tab Actions GitHub — tanpa Android Studio.
+# Hasil: berkas APK siap-install yang bisa diunduh di bagian bawah halaman
+# run (bagian "Artifacts" -> Cek-Blok-APK).
+#
+# Aplikasi di dalam APK = aplikasi web di folder public/app/ (sudah termasuk
+# fitur Login akun web + Kirim/Ambil dari Server), dibungkus ulang dengan
+# Capacitor (sama seperti APK asli id.plantdigital.cekblok).
+
+on:
+  workflow_dispatch:
+    inputs:
+      appName:
+        description: "Nama aplikasi (di layar HP)"
+        required: false
+        default: "Cek Blok"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Ambil kode dari repo
+        uses: actions/checkout@v4
+
+      - name: Pasang Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Pasang Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Salin aplikasi web ke folder www
+        run: |
+          mkdir -p apk-build/www
+          for f in index.html manifest.json icon-192.png icon-512.png exceljs.min.js pdf.min.js pdf.worker.min.js; do
+            if [ -f "public/app/$f" ]; then cp "public/app/$f" "apk-build/www/$f"; else echo "PERINGATAN: public/app/$f tidak ada"; fi
+          done
+          ls -la apk-build/www
+
+      - name: Pasang dependensi Capacitor
+        working-directory: apk-build
+        run: |
+          npm install --no-audit --no-fund
+
+      - name: Siapkan proyek Android
+        working-directory: apk-build
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Naikkan versi aplikasi (timestamp build)
+        working-directory: apk-build/android
+        run: |
+          VS=$(date +%Y%m%d%H)
+          sed -i "s/versionCode [0-9]*/versionCode ${VS: -8}/" app/build.gradle || true
+
+      - name: Bangun APK (debug, siap install)
+        working-directory: apk-build/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Simpan APK sebagai artefak
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cek-Blok-APK
+          path: apk-build/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30

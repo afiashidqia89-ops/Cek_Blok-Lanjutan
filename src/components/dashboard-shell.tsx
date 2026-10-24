@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Database, KeyRound, Users, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Database, Map, Layers, KeyRound, Users, Settings, LogOut, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -18,7 +18,9 @@ export interface ShellUser {
 
 const NAV = [
   { href: '/dashboard', label: 'Ringkasan', icon: LayoutDashboard, admin: false },
+  { href: '/dashboard/data-master', label: 'Data Master', icon: Layers, admin: false },
   { href: '/dashboard/data', label: 'Data Pemeriksaan', icon: Database, admin: false },
+  { href: '/dashboard/peta', label: 'Peta Blok', icon: Map, admin: false },
   { href: '/dashboard/tokens', label: 'Token Perangkat', icon: KeyRound, admin: false },
   { href: '/dashboard/users', label: 'Pengguna', icon: Users, admin: true },
   { href: '/dashboard/settings', label: 'Pengaturan & Log', icon: Settings, admin: true },

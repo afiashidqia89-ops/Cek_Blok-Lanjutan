@@ -20,12 +20,14 @@ model User {
   name         String
   passwordHash String
   role         String        @default("USER") // ADMIN | USER
+  kebun        String        @default("") // kebun tempat user ditugaskan (kosong = semua kebun)
   isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   records      DataRecord[]
   tokens       DeviceToken[]
   exports      DataExport[]
+  mapLayers    MapLayer[]
 }
 
 model DataRecord {
@@ -73,6 +75,8 @@ model DataExport {
   name        String   @default("")
   tanggalFrom String   @default("")
   tanggalTo   String   @default("")
+  kebun       String   @default("")
+  afdeling    String   @default("")
   blok        String   @default("")
   pemeriksa   String   @default("")
   withPhoto   Boolean  @default(true)
@@ -87,6 +91,39 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ===== DATA MASTER (DB Aresta): daftar blok per kebun/afdeling =====
+// Satu baris = satu blok. Aplikasi HP mengambil daftar ini lewat
+// /api/sync/master dan hanya menerima blok sesuai kebun user-nya.
+model BlokMaster {
+  id        String   @id @default(cuid())
+  estate    String
+  kebun     String
+  afdeling  String
+  blok      String
+  luas      Float? // luas (ha)
+  pokok     Int? // jumlah pokok
+  updatedAt DateTime @updatedAt
+
+  @@unique([estate, kebun, afdeling, blok])
+  @@index([kebun])
+  @@index([afdeling])
+}
+
+// Lapisan peta (GeoJSON / raster PDF peta) yang tersimpan di server,
+// sehingga semua pengguna web memakai peta yang sama tanpa impor ulang.
+model MapLayer {
+  id           String   @id @default(cuid())
+  name         String   @default("")
+  type         String   @default("GEOJSON") // GEOJSON | RASTER (gambar PDF peta)
+  content      String // teks GeoJSON, atau dataURL gambar raster
+  meta         String   @default("") // JSON: transformasi georeferensi, daftar field, dsb.
+  sizeBytes    Int      @default(0)
+  isActive     Boolean  @default(true)
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
 }
 
 model AuditLog {

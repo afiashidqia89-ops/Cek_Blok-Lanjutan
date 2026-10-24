@@ -1,0 +1,44 @@
+<div class="history-data-tools report-box" id="serverSyncBox" aria-label="Sinkronisasi server" style="border-color:#a7f3d0;background:linear-gradient(135deg,#ecfdf5,#fff);flex-direction:column;align-items:stretch">
+        <div class="history-data-tools-copy"><b style="color:#166534">Sinkronisasi Server (Internet)</b><small>Kirim / ambil data langsung ke server Cek Blok. Yang menerima TIDAK perlu file manager — data digabung otomatis, duplikat dilewati.</small></div>
+        <div class="report-actions">
+          <button type="button" class="primary" id="srvSendBtn">☁️ Kirim ke Server</button>
+          <button type="button" class="secondary" id="srvFetchBtn">⬇️ Ambil dari Server</button>
+          <button type="button" class="secondary" id="srvMasterBtn">📚 Ambil Data Master</button>
+          <button type="button" class="secondary" id="srvCfgBtn">⚙️ Server &amp; Token</button>
+        </div>
+        <small id="srvKebunInfo" style="color:#166534;font-weight:600;padding-left:2px"></small>
+        <div id="srvCfgPanel" hidden style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px dashed #a7f3d0;border-radius:10px;margin-top:8px">
+          <label style="font-size:12px;color:#374151">Alamat server
+            <input id="srvUrlInput" type="url" placeholder="https://alamat-server-anda" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px">
+          </label>
+          <div style="border:1px dashed #86efac;border-radius:8px;padding:10px;background:#f0fdf4;display:flex;flex-direction:column;gap:8px">
+            <b style="font-size:12px;color:#14532d">Masuk pakai akun web (rekomendasi)</b>
+            <label style="font-size:12px;color:#374151">Username
+              <input id="srvUserInput" type="text" autocapitalize="none" autocomplete="username" placeholder="username dari web admin" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px">
+            </label>
+            <label style="font-size:12px;color:#374151">Password
+              <input id="srvPassInput" type="password" autocomplete="current-password" placeholder="password akun web" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px">
+            </label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button type="button" class="primary" id="srvLoginBtn">Masuk</button>
+              <button type="button" class="secondary" id="srvLogoutBtn" hidden>Keluar</button>
+              <small id="srvLoginInfo" style="color:#6b7280"></small>
+            </div>
+            <small style="color:#6b7280;font-size:11px">Username &amp; password dibuat admin di web (menu Pengguna). Token perangkat dibuat otomatis saat login — data Kirim/Ambil langsung aktif.</small>
+          </div>
+          <details>
+            <summary style="font-size:12px;color:#374151;cursor:pointer">Pakai token perangkat manual (opsional)</summary>
+            <label style="font-size:12px;color:#374151;display:block;margin-top:6px">Token perangkat
+              <input id="srvTokenInput" type="text" placeholder="cbk_..." style="width:100%;margin-top:4px;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-family:monospace">
+            </label>
+          </details>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button type="button" class="secondary" id="srvSaveBtn">Simpan</button>
+            <button type="button" class="secondary" id="srvTestBtn">Tes Koneksi</button>
+            <small id="srvTestInfo" style="color:#6b7280"></small>
+          </div>
+          <small style="color:#6b7280;font-size:11px">Token dibuat otomatis saat login, atau lewat web admin: menu Token Perangkat → Buat Token.</small>
+          <small style="color:#6b7280;font-size:11px">📚 <b>Ambil Data Master</b> = memperbarui daftar blok (estate, kebun, afdeling, luas, jumlah pokok) sesuai kebun akun Anda. Jalankan setiap kali admin memperbarui Data Master di web.</small>
+        </div>
+        <small id="srvStatus" style="color:#6b7280;padding-left:2px"></small>
+      </div>

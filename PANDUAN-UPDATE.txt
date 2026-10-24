@@ -1,0 +1,181 @@
+================================================================
+ PAKET UPDATE SERVER CEK BLOK — DATA MASTER (DB BLOK) + KEBUN
+ Tanggal: 24 Oktober 2026 (versi paket: v33-master-data)
+================================================================
+
+ISI UPDATE INI (menambah semua update sebelumnya — peta web,
+login HP, foto — tetap ada di dalam paket ini):
+  1. HALAMAN WEB BARU "DATA MASTER": database blok yang ada di
+     aplikasi (DB Aresta: estate, kebun, afdeling, blok, luas ha,
+     jumlah pokok) sekarang JUGA ada di web.
+     - Tombol "Muat DB Aresta Bawaan" menyalin 6.041 blok dari
+       aplikasi ke server (sekali klik, tanpa unggah berkas).
+     - Bisa juga Impor CSV/JSON milik sendiri, ubah luas/jumlah
+       pokok per blok, hapus, dan Unduh CSV.
+  2. PENUGASAN KEBUN PER PENGGUNA (menu Pengguna di web):
+     setiap user bisa diberi "Kebun penugasan".
+  3. APLIKASI HP SESUAI KEBUN USER:
+     - Login di HP sekarang menampilkan "Kebun Anda: XX".
+     - Tombol baru "📚 Ambil Data Master" mengganti daftar blok
+       di HP SESUAI kebun akun — pilihan Estate/Kebun/Afdeling/
+       Blok hanya menampilkan kebun user tsb.
+     - "Ambil dari Server" juga hanya menerima transaksi kebun
+       user (data kebun lain tidak ikut ke HP).
+  4. UPDATE BERANTAI WEB -> HP: setiap kali Data Master di web
+     diperbarui (edit luas/pokok, blok baru, impor CSV), HP yang
+     menekan "Ambil Data Master" otomatis mendapat data terbaru.
+
+ALUR PAKAI SETELAH TERPASANG:
+  Web: Data Master -> Muat DB Aresta Bawaan -> menu Pengguna ->
+  isi "Kebun penugasan" tiap user -> selesai.
+  HP: buka Data Report -> Server & Token -> Masuk (pakai akun
+  web) -> tombol "📚 Ambil Data Master".
+  Ulangi tombol 📚 di HP setiap kali admin memperbarui Data
+  Master di web.
+
+================================================================
+ LANGKAH 1 - UNGGAH & GANTI FILE DI GITHUB (via Codespaces)
+================================================================
+ 1. Buka repo GitHub Anda:
+    github.com/afiashidqia89-ops/Cek_Blok-Lanjutan
+ 2. Klik hijau "Code" -> tab "Codespaces" -> buat/buka Codespace.
+ 3. Di panel kiri Codespace, seret file ZIP ini ke dalamnya
+    (masuk di daftar file kiri).
+ 4. Klik terminal (menu atas -> Terminal -> New Terminal), jalankan:
+
+       unzip -o cek-blok-update-peta-login.zip
+       rm cek-blok-update-peta-login.zip
+
+    (perintah ini MENIMPA file lama dengan yang baru - memang
+    itu tujuannya; file yang tidak ada di paket tidak tersentuh)
+ 5. Klik ikon "Source Control" (cabang) di kiri -> tulis pesan
+    mis. "Update: data master blok + kebun user" ->
+    klik "Commit changes" -> "Sync changes" (kalau diminta).
+
+================================================================
+ LANGKAH 2 - TUNGGU VERCEL SELESAI
+================================================================
+ - Buka vercel.com -> proyek cek-blok-lanjutan -> Deployments.
+ - Tunggu deploy baru (karena commit tadi) berstatus Ready.
+
+================================================================
+ LANGKAH 3 - PERBARUI TABEL DATABASE (WAJIB, sekali)
+================================================================
+ Update ini butuh 1 tabel baru (BlokMaster) + 1 kolom baru di
+ tabel User (kebun). Caranya sama seperti sebelumnya:
+ 1. Buka tab "Actions" di repo GitHub.
+ 2. Klik workflow "Terapkan Skema Database (Postgres)".
+ 3. Klik "Run workflow" -> tunggu sampai centang hijau.
+ (Bila nanti ada notifikasi kolom/tabel tidak ada, jalankan
+  workflow ini lagi — aman dijalankan berulang.)
+
+================================================================
+ LANGKAH 4 - ISI DATA MASTER DI WEB (sekali, 1 klik)
+================================================================
+ 1. Buka web Anda -> login admin.
+ 2. Menu "Data Master" (di bawah Ringkasan).
+ 3. Klik "Muat DB Aresta Bawaan" -> konfirmasi.
+ 4. Kartu ringkasan harus menampilkan: Estate 24, Kebun 33,
+    Afdeling 165, Blok 6.041.
+ (Bila Anda punya CSV sendiri, pakai "Impor Data" — kolom:
+  Estate;Kebun;Afdeling;Blok;Luas;Jumlah Pokok)
+
+================================================================
+ LANGKAH 5 - TUGASKAN KEBUN KE TIAP PENGGUNA
+================================================================
+ 1. Menu "Pengguna" -> daftarkan user baru ATAU ubah user lama
+    (tombol pensil).
+ 2. Pada "Kebun penugasan", pilih kebun user tsb (mis. KBM).
+    Biarkan "Semua kebun" untuk admin/pengawas.
+ 3. Simpan.
+
+================================================================
+ LANGKAH 6 - PERBARUI APLIKASI DI HP
+================================================================
+ A. Bila pakai versi web di browser HP (public/app): cukup
+    muat ulang halaman (tarik ke bawah untuk refresh).
+ B. Bila pakai APK: bangun ulang APK-nya:
+    1. Tab "Actions" di repo -> "Bangun APK Cek Blok".
+    2. "Run workflow" -> tunggu selesai.
+    3. Unduh "Cek-Blok-APK" dari bagian Artifacts.
+    4. Pasang APK baru di HP (ganti yang lama).
+
+================================================================
+ LANGKAH 7 - PAKAI DI HP (per user)
+================================================================
+ 1. Buka aplikasi -> menu "Data Report" (lihat "Sinkronisasi
+    Server") -> "Server & Token".
+ 2. Isi alamat server (https://cek-blok-lanjutan.vercel.app),
+    username & password akun web user tsb -> "Masuk".
+    -> akan muncul: "Kebun Anda: KBM - ..."
+ 3. Klik "📚 Ambil Data Master" -> konfirmasi.
+    -> daftar blok di HP diganti sesuai kebun user (mis. KBM
+       = 188 blok). Cek menu Pemeriksaan: pilihan Estate/Kebun/
+       Afdeling/Blok kini hanya kebun tsb, dan luas/jumlah
+       pokok terisi otomatis dari server.
+ 4. "Kirim ke Server" / "Ambil dari Server" seperti biasa —
+    "Ambil dari Server" hanya membawa transaksi kebun user.
+
+================================================================
+ TROUBLESHOOTING
+================================================================
+ * "Data master di server masih kosong" di HP
+   -> Data Master di web belum dimuat. Lakukan Langkah 4.
+ * Menu "Data Master" tidak ada / muncul error setelah update
+   -> Langkah 3 (workflow skema database) belum dijalankan.
+ * Dropdown "Kebun penugasan" kosong di menu Pengguna
+   -> Data Master masih kosong; muat dulu (Langkah 4), lalu
+      muat ulang halaman Pengguna.
+ * Setelah Ambil Data Master, daftar blok tidak berubah
+   -> pastikan login di HP pakai akun yang kebunnya sudah
+      ditugaskan; keluar lalu masuk lagi di HP, ulangi tombol
+      📚. Untuk mengembalikan daftar blok lengkap: menu Data
+      Report -> kartu DB Aresta -> "Kembalikan DB Bawaan".
+ * User melihat transaksi kebun lain di web?
+   -> filter per kebun berlaku di aplikasi HP. Di WEB, semua
+      data tetap tampil (bisa difilter manual) — web dipakai
+      admin/pengawas lintas kebun.
+ * Foto tidak ikut? Fitur foto update sebelumnya tetap sama
+   (otomatis terkompres; lihat panduan update sebelumnya).
+
+================================================================
+ DAFTAR FILE DALAM PAKET (ditimpa di repo)
+================================================================
+ prisma/schema.prisma, prisma/schema.postgres.prisma
+   - +tabel BlokMaster, +kolom User.kebun
+ src/lib/master-bawaan.ts
+   - data DB Aresta bawaan (6.041 blok) untuk tombol "Muat DB
+     Aresta Bawaan"
+ src/lib/ingest.ts, src/lib/peta-loader.ts
+ src/app/api/master/route.ts, src/app/api/master/[id]/route.ts
+   - BARU: data master (list/facets/impor/edit/hapus)
+ src/app/api/sync/master/route.ts
+   - BARU: HP ambil data master sesuai kebun user
+ src/app/api/sync/download/route.ts
+   - filter transaksi per kebun user
+ src/app/api/sync/upload/route.ts, src/app/api/data/upload/route.ts
+ src/app/api/data/route.ts, src/app/api/data/export/route.ts
+ src/app/api/data/facets/route.ts, src/app/api/data/[id]/route.ts
+ src/app/api/data/[id]/photos/route.ts
+ src/app/api/app/login/route.ts
+   - respons login kini menyertakan kebun user
+ src/app/api/admin/users/route.ts, src/app/api/admin/users/[id]/route.ts
+   - simpan/ubah kebun penugasan user
+ src/app/api/map-layers/route.ts, src/app/api/map-layers/[id]/route.ts
+ src/app/api/map-records/route.ts
+ src/app/api/share/route.ts, src/app/api/share/[token]/route.ts
+ src/app/dashboard/data-master/page.tsx
+   - BARU: halaman web Data Master
+ src/app/dashboard/users/page.tsx
+   - kolom & dropdown "Kebun penugasan"
+ src/app/dashboard/data/page.tsx, src/app/dashboard/peta/page.tsx
+ src/components/dashboard-shell.tsx
+   - menu "Data Master"
+ public/app/index.html
+   - aplikasi HP: tombol "Ambil Data Master" + info kebun
+ public/peta/peta-engine.js
+ .github/workflows/build-apk.yml, apk-build/*
+ scripts/patch_apk.py, scripts/patch_payload/*
+ scripts/gen_master_bawaan.py, scripts/test_master.sh
+   - alat bantu (tidak wajib untuk jalan)
+ docs/API-DOKUMENTASI.md, PANDUAN-UPDATE.txt

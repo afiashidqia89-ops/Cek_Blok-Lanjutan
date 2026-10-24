@@ -22,6 +22,8 @@ export async function GET(req: Request) {
     q: sp.get('q') || undefined,
     tanggalFrom: sp.get('tanggalFrom') || undefined,
     tanggalTo: sp.get('tanggalTo') || undefined,
+    kebun: sp.get('kebun') || undefined,
+    afdeling: sp.get('afdeling') || undefined,
     blok: sp.get('blok') || undefined,
     pemeriksa: sp.get('pemeriksa') || undefined,
   }
