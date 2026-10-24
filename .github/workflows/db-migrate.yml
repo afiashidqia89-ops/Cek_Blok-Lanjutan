@@ -1,0 +1,49 @@
+name: Terapkan Skema Database (Postgres)
+
+# Jalankan lewat TOMBOL di tab Actions GitHub — tanpa terminal di komputer.
+# Dipakai untuk membuat/memperbarui tabel di database Neon/Supabase Anda.
+#
+# Persiapan sekali saja:
+#   Settings → Secrets and variables → Actions → New repository secret
+#   Nama  : DATABASE_URL
+#   Isi   : connection string PostgreSQL dari Neon/Supabase
+#           (bentuk: postgresql://user:pass@host/db?sslmode=require)
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Paksa meski ada potensi kehilangan data (HATI-HATI!)"
+        type: boolean
+        default: false
+
+jobs:
+  db-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kode dari repo
+        uses: actions/checkout@v4
+
+      - name: Pasang Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Pasang dependensi
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Alihkan skema ke PostgreSQL
+        run: cp prisma/schema.postgres.prisma prisma/schema.prisma
+
+      - name: Buat / perbarui tabel di database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            bunx prisma db push --skip-generate --accept-data-loss
+          else
+            bunx prisma db push --skip-generate
+          fi
+
+      - name: Selesai
+        run: echo "✅ Tabel berhasil dibuat/diperbarui di database Anda."

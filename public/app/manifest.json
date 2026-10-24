@@ -1,0 +1,27 @@
+{
+  "id": "./",
+  "name": "Pemeriksaan Kondisi Blok",
+  "short_name": "Cek Blok",
+  "description": "Form inspeksi kondisi blok dengan GPS offline",
+  "lang": "id",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef3ef",
+  "theme_color": "#166534",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

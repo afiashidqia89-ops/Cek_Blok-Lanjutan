@@ -1,0 +1,101 @@
+// Skema database - Server Cek Blok
+// Catatan produksi: untuk deploy ke Vercel/Netlify (serverless), ganti provider
+// menjadi "postgresql" (lihat prisma/schema.postgres.prisma + docs/PANDUAN-DEPLOY.md)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  username     String        @unique
+  name         String
+  passwordHash String
+  role         String        @default("USER") // ADMIN | USER
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  records      DataRecord[]
+  tokens       DeviceToken[]
+  exports      DataExport[]
+}
+
+// Satu baris = satu transaksi pemeriksaan blok (record dari aplikasi Cek Blok)
+model DataRecord {
+  id             String   @id @default(cuid())
+  trfKey         String   @unique // kunci deduplikasi: kodeTransaksi|pemeriksa|savedAt
+  kodeTransaksi  String   @default("")
+  tanggal        String   @default("") // YYYY-MM-DD (string, sesuai format aplikasi)
+  pemeriksa      String   @default("")
+  estate         String   @default("") // PT / Estate
+  kebun          String   @default("")
+  afdeling       String   @default("")
+  blok           String   @default("")
+  status         String   @default("")
+  savedAt        Float? // epoch ms dari perangkat
+  payload        String // JSON lengkap satu record (termasuk details, GPS, foto)
+  perangkat      String   @default("") // nama HP sumber
+  sizeBytes      Int      @default(0)
+  uploadedById   String?
+  uploadedBy     User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+
+  @@index([tanggal])
+  @@index([blok])
+  @@index([pemeriksa])
+  @@index([uploadedById])
+  @@index([createdAt])
+}
+
+// Token perangkat: dipakai aplikasi Cek Blok (di HP) untuk upload/download ke server
+model DeviceToken {
+  id         String    @id @default(cuid())
+  token      String    @unique // cbk_xxxxx...
+  label      String    @default("") // nama HP / keterangan
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Tautan berbagi publik: berkas transfer siap-import lewat menu "Terima & Gabung Data"
+model DataExport {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  name        String   @default("")
+  tanggalFrom String   @default("")
+  tanggalTo   String   @default("")
+  blok        String   @default("")
+  pemeriksa   String   @default("")
+  withPhoto   Boolean  @default(true)
+  downloads   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  username  String?
+  action    String // LOGIN, LOGIN_GAGAL, BUAT_USER, UPLOAD, DOWNLOAD, dst.
+  detail    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
