@@ -45,5 +45,11 @@ jobs:
             bunx prisma db push --skip-generate
           fi
 
+      - name: Angkat admin pertama jadi Super Admin
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "UPDATE \"User\" SET role = 'SUPERADMIN' WHERE role = 'ADMIN' AND \"createdAt\" = (SELECT MIN(\"createdAt\") FROM \"User\" WHERE role = 'ADMIN');" | bunx prisma db execute --stdin || echo "(langkah promosi dilewati — mungkin belum ada admin)"
+
       - name: Selesai
         run: echo "✅ Tabel berhasil dibuat/diperbarui di database Anda."
