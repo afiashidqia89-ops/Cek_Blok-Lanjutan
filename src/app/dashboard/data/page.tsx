@@ -20,11 +20,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
-  Upload, Download, Link2, Search, RefreshCw, Trash2, Eye, ChevronLeft, ChevronRight, Copy, FileSpreadsheet, MapPin, Camera,
+  Download, Link2, Search, RefreshCw, Trash2, Eye, ChevronLeft, ChevronRight, Copy, FileSpreadsheet, MapPin, Camera,
 } from 'lucide-react'
 import { fmtBytes } from '../page'
 import { jsonFetch } from '@/lib/api'
-import { parseXlsx, pickCol, buildWorkbook, downloadWorkbook } from '@/lib/excel-client'
+import { buildWorkbook, downloadWorkbook } from '@/lib/excel-client'
 
 interface Row {
   id: string; kodeTransaksi: string; tanggal: string; pemeriksa: string;
@@ -62,6 +62,37 @@ const METRICS = ['semak', 'tunasan', 'titi', 'kerdil', 'banjir'] as const
 function num(v: unknown): number {
   const n = Number(v)
   return Number.isFinite(n) ? n : 0
+}
+
+interface TmLoc { latitude?: unknown; longitude?: unknown; accuracy?: unknown; source?: unknown }
+
+/** Ambil koordinat temuan dari record: kembalikan titik pertama + jumlah titik */
+function koordinatUtama(rec: Record<string, unknown>): {
+  lat: number; lng: number; acc: number | null; src: string; total: number
+} | null {
+  const details = (rec.details || {}) as Record<string, { location?: TmLoc; extras?: { location?: TmLoc }[] }>
+  let total = 0
+  let first: TmLoc | null = null
+  for (const k of [...METRICS, 'bukti']) {
+    const d = details[k]
+    if (!d) continue
+    const samples = [d, ...(Array.isArray(d.extras) ? d.extras : [])]
+    for (const sm of samples) {
+      const L = (sm as { location?: TmLoc } | undefined)?.location
+      if (L && Number.isFinite(Number(L.latitude)) && Number.isFinite(Number(L.longitude))) {
+        total++
+        if (!first) first = L
+      }
+    }
+  }
+  if (!first) return null
+  return {
+    lat: Number(first.latitude),
+    lng: Number(first.longitude),
+    acc: first.accuracy != null && Number.isFinite(Number(first.accuracy)) ? Number(first.accuracy) : null,
+    src: String(first.source || ''),
+    total,
+  }
 }
 
 /** nilai temuan: utamakan details[key].value (+extras), fallback angka top-level */
@@ -145,6 +176,99 @@ interface RekapRow {
   kerdil: number; banjir: number; lokasi: number; foto: number; status: string
 }
 
+/** Satu baris rincian temuan (sama seperti sheet "Detail Temuan" pada ekspor aplikasi HP) */
+function barisTemuan(rec: Record<string, unknown>): Array<{
+  tem: string; sam: number; nilai: number | null; sat: string
+  lat: number | null; lng: number | null; akr: number | null; src: string; foto: boolean
+}> {
+  const out: ReturnType<typeof barisTemuan> = []
+  const details = (rec.details || {}) as Record<string, {
+    value?: unknown; photo?: unknown; location?: TmLoc
+    extras?: { value?: unknown; photo?: unknown; location?: TmLoc }[]
+  }>
+  const push = (tem: string, sam: number, d: { value?: unknown; photo?: unknown; location?: TmLoc }, fallback: unknown, sat: string) => {
+    const loc = d?.location || null
+    const okLoc = loc && Number.isFinite(Number(loc.latitude)) && Number.isFinite(Number(loc.longitude))
+    const val = d && d.value !== undefined ? num(d.value) : num(fallback)
+    if (!(val > 0 || (d && d.photo) || okLoc)) return
+    out.push({
+      tem, sam, nilai: val > 0 ? val : null, sat,
+      lat: okLoc ? Number(loc!.latitude) : null,
+      lng: okLoc ? Number(loc!.longitude) : null,
+      akr: okLoc && loc!.accuracy != null && Number.isFinite(Number(loc!.accuracy)) ? Number(loc!.accuracy) : null,
+      src: okLoc ? String(loc!.source || 'GPS') : '',
+      foto: !!(d && d.photo),
+    })
+  }
+  for (const key of METRICS) {
+    const d0 = details[key] || {}
+    push(LABEL_TM[key] || key, 1, d0, rec[key], SATUAN[key] || '')
+    ;(Array.isArray(d0.extras) ? d0.extras : []).forEach((x, ix) => push(`${LABEL_TM[key] || key}`, ix + 2, x || {}, rec[key], SATUAN[key] || ''))
+  }
+  const db = details.bukti
+  if (db && (db.photo || db.location)) {
+    const loc = db.location || null
+    const okLoc = loc && Number.isFinite(Number(loc.latitude)) && Number.isFinite(Number(loc.longitude))
+    out.push({
+      tem: 'Foto Bukti Kondisi Ancak', sam: 1, nilai: null, sat: '',
+      lat: okLoc ? Number(loc!.latitude) : null,
+      lng: okLoc ? Number(loc!.longitude) : null,
+      akr: okLoc && loc!.accuracy != null && Number.isFinite(Number(loc!.accuracy)) ? Number(loc!.accuracy) : null,
+      src: okLoc ? String(loc!.source || 'GPS') : '',
+      foto: !!db.photo,
+    })
+  }
+  return out
+}
+
+/** Tabel rincian temuan satu transaksi — tampilan sama seperti ekspor "Detail Temuan" di HP */
+function TabelTemuan({ rec }: { rec: Record<string, unknown> }) {
+  const rows = barisTemuan(rec)
+  if (!rows.length) {
+    return (
+      <p className="text-xs text-muted-foreground rounded-md border border-dashed p-3">
+        Tidak ada rincian temuan pada transaksi ini.
+      </p>
+    )
+  }
+  return (
+    <div>
+      <p className="text-sm font-semibold mb-2">Temuan / Rincian</p>
+      <div className="overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Temuan</TableHead>
+              <TableHead className="text-right">Sampel</TableHead>
+              <TableHead className="text-right">Nilai</TableHead>
+              <TableHead>Koordinat</TableHead>
+              <TableHead>Foto</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((b, i) => (
+              <TableRow key={i}>
+                <TableCell className="text-xs font-medium">{b.tem}</TableCell>
+                <TableCell className="text-right text-xs">{b.sam}</TableCell>
+                <TableCell className="text-right text-xs tabular-nums">{b.nilai != null ? `${b.nilai} ${b.sat}` : '-'}</TableCell>
+                <TableCell className="text-xs whitespace-nowrap">
+                  {b.lat != null && b.lng != null ? (
+                    <a className="text-green-700 underline decoration-dotted" target="_blank" rel="noopener"
+                      href={`https://www.google.com/maps?q=${b.lat},${b.lng}`}>
+                      {b.lat.toFixed(6)}, {b.lng.toFixed(6)}{b.akr != null ? ` (±${b.akr} m)` : ''}
+                    </a>
+                  ) : '-'}
+                </TableCell>
+                <TableCell className="text-xs">{b.foto ? 'ADA' : '-'}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}
+
 export default function DataPage() {
   const [me, setMe] = useState<{ uid: string; role: string; kebun?: string } | null>(null)
   const [filters, setFilters] = useState(emptyFilters)
@@ -153,14 +277,11 @@ export default function DataPage() {
   const [data, setData] = useState<ListData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [uploadOpen, setUploadOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [detail, setDetail] = useState<DetailRow | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
-
-  const [file, setFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
+  const [galleryId, setGalleryId] = useState<string | null>(null)
   const [withPhoto, setWithPhoto] = useState(true)
   const [shareName, setShareName] = useState('Data Pemeriksaan Blok')
   const [shareUrl, setShareUrl] = useState('')
@@ -232,45 +353,9 @@ export default function DataPage() {
     setApplied({ ...filters })
   }
 
-  /** ---- UNGGAH EXCEL: baca .xlsx di browser → kirim records JSON ke server ---- */
-  async function doUpload() {
-    if (!file) { toast.error('Pilih berkas Excel (.xlsx) dulu'); return }
-    if (!/\.xlsx$/i.test(file.name)) { toast.error('Format harus .xlsx — format Excel saja'); return }
-    setUploading(true)
-    try {
-      const parsed = await parseXlsx(file)
-      const records = parsed.rows.map((r, i) => rowToRecord(r, i)).filter(Boolean) as Record<string, unknown>[]
-      if (!records.length) throw new Error('Tidak ada baris valid — pastikan ada kolom Tanggal & Blok')
-      const res = await fetch('/api/data/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records, perangkat: 'WEB-EXCEL' }),
-      })
-      const d = await res.json()
-      if (!res.ok || !d.ok) { toast.error(d.error || 'Upload gagal'); return }
-      toast.success(`Diterima ${d.diterima} transaksi: ${d.baru} baru, ${d.duplikat} duplikat dilewati. Data ke HP dikirim otomatis dalam bentuk JSON (sinkronisasi).`)
-      setUploadOpen(false); setFile(null); load(); loadRekap()
-    } catch (e) {
-      toast.error(String((e as Error).message || e))
-    } finally { setUploading(false) }
-  }
-
-  /** ---- Unduh TEMPLATE excel unggahan ---- */
-  async function unduhTemplate() {
-    try {
-      const headers = TEMPLATE_HEADERS
-      const wb = await buildWorkbook([{
-        name: 'Data Pemeriksaan',
-        columns: headers.map((h) => ({ header: h, key: h, width: h === 'Catatan' ? 40 : 14 })),
-        rows: [contohTemplate()],
-        colorStatusKey: 'Status',
-      }])
-      await downloadWorkbook(wb, 'template_unggah_pemeriksaan.xlsx')
-      toast.success('Template Excel diunduh — isi lalu unggah kembali')
-    } catch (e) { toast.error(String((e as Error).message || e)) }
-  }
-
-  /** ---- EKSPOR XLSX sama seperti aplikasi (Rekap + Detail Temuan + Foto) ---- */
+  /** ---- EKSPOR XLSX sama seperti aplikasi (Rekap + Detail Temuan) ----
+   * Endpoint /api/data/export mengembalikan BERKAS TRANSFER format aplikasi
+   * ({app:'cekblok-transfer', records:[...]}) — bukan {ok:true}. */
   async function eksporXlsx(denganFoto: boolean) {
     setExporting(true)
     toast.info(denganFoto ? 'Menyiapkan Excel + foto…' : 'Menyiapkan Excel rekap…')
@@ -279,9 +364,13 @@ export default function DataPage() {
       Object.entries(applied).forEach(([k, v]) => { if (v) p.set(k, v) })
       p.set('foto', denganFoto ? '1' : '0')
       const res = await fetch(`/api/data/export?${p}`)
-      const d = await res.json()
-      if (!d.ok) throw new Error(d.error || 'gagal mengambil data')
-      const rows = (d.records || []) as Record<string, unknown>[]
+      if (!res.ok) {
+        let pesan = 'HTTP ' + res.status
+        try { const je = await res.json(); if (je?.error) pesan = String(je.error) } catch { /* bukan json */ }
+        throw new Error('Gagal mengambil data dari server: ' + pesan)
+      }
+      const d = (await res.json()) as { records?: Record<string, unknown>[]; jumlah?: number }
+      const rows = d.records || []
       if (!rows.length) throw new Error('Tidak ada data pada filter ini')
 
       // luas & pokok dari Data Master (fallback bila record tidak membawanya)
@@ -367,9 +456,6 @@ export default function DataPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setUploadOpen(true)} className="bg-green-700 hover:bg-green-800">
-            <Upload className="h-4 w-4 mr-1.5" /> Unggah Berkas (Excel)
-          </Button>
           <Button variant="outline" onClick={() => setExportOpen(true)}>
             <Download className="h-4 w-4 mr-1.5" /> Unduh Excel / JSON
           </Button>
@@ -565,6 +651,8 @@ export default function DataPage() {
                       <TableHead className="text-right">Kerdil</TableHead>
                       <TableHead className="text-right">Banjir</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Koordinat</TableHead>
+                      <TableHead className="text-right">Foto</TableHead>
                       <TableHead>Temuan</TableHead>
                       <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
@@ -573,7 +661,7 @@ export default function DataPage() {
                     {loading && (
                       [0, 1, 2, 3].map((i) => (
                         <TableRow key={i}>
-                          {Array.from({ length: 12 }).map((_, j) => (
+                          {Array.from({ length: 14 }).map((_, j) => (
                             <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                           ))}
                         </TableRow>
@@ -602,8 +690,34 @@ export default function DataPage() {
                           <TableCell>
                             <Badge className={`border-transparent ${statusColor(r.status)}`}>{r.status || '-'}</Badge>
                             <div className="mt-1 text-[10px] text-muted-foreground whitespace-nowrap">
-                              {r.lokasi ?? 0} lokasi · {r.foto ?? 0} foto
+                              {r.lokasi ?? 0} lokasi
                             </div>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {(() => {
+                              const ko = koordinatUtama(rec)
+                              if (!ko) return <span className="text-xs text-muted-foreground">-</span>
+                              return (
+                                <a
+                                  className="text-xs text-green-700 underline decoration-dotted"
+                                  target="_blank" rel="noopener"
+                                  href={`https://www.google.com/maps?q=${ko.lat},${ko.lng}`}
+                                  title={ko.src ? `Sumber: ${ko.src}` : undefined}
+                                >
+                                  {ko.lat.toFixed(5)}, {ko.lng.toFixed(5)}
+                                  {ko.total > 1 ? <span className="text-muted-foreground"> (+{ko.total - 1})</span> : null}
+                                </a>
+                              )
+                            })()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {(r.foto ?? 0) > 0 ? (
+                              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setGalleryId(r.id)}>
+                                <Camera className="h-3.5 w-3.5 mr-1 text-green-700" /> {r.foto} foto
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {r.perangkat || r.uploadedBy?.username || '-'}
@@ -624,8 +738,8 @@ export default function DataPage() {
                     })}
                     {!loading && data && data.rows.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={12} className="text-center text-muted-foreground py-10">
-                          Belum ada data yang cocok. Unggah berkas Excel dari tombol &quot;Unggah Berkas (Excel)&quot;, atau kirim langsung dari aplikasi (Kirim ke Server).
+                        <TableCell colSpan={14} className="text-center text-muted-foreground py-10">
+                          Belum ada data yang cocok. Kirim data dari aplikasi HP lewat menu <b>Sinkronisasi Server → Kirim Data ke Server</b>.
                         </TableCell>
                       </TableRow>
                     )}
@@ -647,32 +761,6 @@ export default function DataPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Dialog Unggah Excel */}
-      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Unggah Berkas Excel (.xlsx)</DialogTitle>
-            <DialogDescription>
-              Format Excel saja. Gunakan <b>Unduh Template</b> untuk melihat kolom yang benar (sama dengan ekspor aplikasi).
-              Data duplikat otomatis dilewati. Data yang diterima HP tetap berbentuk JSON lewat sinkronisasi.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Input type="file" accept=".xlsx" multiple={false} onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            <Button variant="outline" size="sm" onClick={unduhTemplate}>
-              <Download className="h-4 w-4 mr-1.5" /> Unduh Template Excel
-            </Button>
-            <p className="text-xs text-muted-foreground">Berkas besar membutuhkan waktu beberapa saat.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setUploadOpen(false)}>Batal</Button>
-            <Button onClick={doUpload} disabled={!file || uploading} className="bg-green-700 hover:bg-green-800">
-              {uploading ? 'Mengunggah…' : 'Unggah'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Dialog Unduh Data */}
       <Dialog open={exportOpen} onOpenChange={setExportOpen}>
@@ -797,14 +885,26 @@ export default function DataPage() {
                 ))}
               </div>
               <FotoTemuan id={detail.id} />
-              <div>
-                <p className="text-sm font-semibold mb-2">Temuan / Rincian</p>
-                <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-words">
+              <TabelTemuan rec={detail.record} />
+              <details>
+                <summary className="cursor-pointer text-xs text-muted-foreground">Lihat data mentah (JSON)</summary>
+                <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-words">
                   {JSON.stringify(detail.record, (k, v) => (k === 'photo' && typeof v === 'string' && v.startsWith('data:image') ? '[foto]' : v), 2)}
                 </pre>
-              </div>
+              </details>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Galeri Foto (dibuka dari kolom Foto di tabel Hasil Temuan) */}
+      <Dialog open={!!galleryId} onOpenChange={(o) => !o && setGalleryId(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Foto Temuan</DialogTitle>
+            <DialogDescription>Foto yang dikirim dari aplikasi HP bersama transaksi ini.</DialogDescription>
+          </DialogHeader>
+          {galleryId ? <FotoTemuan id={galleryId} /> : null}
         </DialogContent>
       </Dialog>
     </div>
@@ -812,59 +912,6 @@ export default function DataPage() {
 }
 
 /* ==================== Fungsi bantu rekap & ekspor ==================== */
-
-const TEMPLATE_HEADERS = [
-  'Kode Transaksi', 'Tanggal', 'Pemeriksa', 'Estate', 'Kebun', 'Afdeling', 'Blok',
-  'Luas (Ha)', 'Jumlah Pokok', 'Pasar Kanan', 'Nomor Baris Kanan', 'Pasar Kiri', 'Nomor Baris Kiri',
-  'Ancak', 'Kategori Ancak', 'Semak (Ha)', 'Tunasan (Pkk)', 'Titi (Unit)', 'Kerdil (Pkk)', 'Banjir (Ha)',
-  'Status', 'Catatan',
-]
-
-function contohTemplate(): Record<string, unknown> {
-  return {
-    'Kode Transaksi': 'TRX-001', Tanggal: new Date().toISOString().slice(0, 10), Pemeriksa: 'Nama Pemeriksa',
-    Estate: 'KBM', Kebun: 'KBM 1', Afdeling: 'A', Blok: 'H031', 'Luas (Ha)': 36.8, 'Jumlah Pokok': 2573,
-    'Pasar Kanan': 'Ya', 'Nomor Baris Kanan': '12', 'Pasar Kiri': 'Ya', 'Nomor Baris Kiri': '15',
-    Ancak: 3, 'Kategori Ancak': 'TEMbus', 'Semak (Ha)': 1.25, 'Tunasan (Pkk)': 4, 'Titi (Unit)': 0, 'Kerdil (Pkk)': 2, 'Banjir (Ha)': 0,
-    Status: 'PERLU PERBAIKAN', Catatan: 'contoh catatan',
-  }
-}
-
-/** baris Excel → record format transfer Cek Blok */
-function rowToRecord(r: Record<string, unknown>, i: number): Record<string, unknown> | null {
-  const tanggal = pickCol(r, ['Tanggal', 'tanggal', 'Date'])
-  const blok = pickCol(r, ['Blok', 'Block'])
-  const kebun = pickCol(r, ['Kebun'])
-  const afdeling = pickCol(r, ['Afdeling', 'Afd', 'Divisi'])
-  if (!blok && !tanggal) return null
-  const numF = (names: string[]) => {
-    const v = pickCol(r, names)
-    if (v === '') return null
-    const n = Number(String(v).replace(/\s/g, '').replace(',', '.'))
-    return Number.isFinite(n) ? n : null
-  }
-  return {
-    kodeTransaksi: pickCol(r, ['Kode Transaksi', 'Kode', 'kodeTransaksi']),
-    tanggal,
-    pemeriksa: pickCol(r, ['Pemeriksa', 'Pemeriksa/Tim']),
-    estate: pickCol(r, ['Estate', 'PT']),
-    kebun, afdeling, blok,
-    luas: numF(['Luas (Ha)', 'Luas']),
-    pokok: numF(['Jumlah Pokok', 'Pokok']),
-    noPasarKanan: pickCol(r, ['Nomor Baris Kanan']),
-    noPasarKiri: pickCol(r, ['Nomor Baris Kiri']),
-    ancak: numF(['Ancak']),
-    ancakStatus: pickCol(r, ['Kategori Ancak']),
-    semak: numF(['Semak (Ha)', 'Semak']) ?? 0,
-    tunasan: numF(['Tunasan (Pkk)', 'Tunasan']) ?? 0,
-    titi: numF(['Titi (Unit)', 'Titi']) ?? 0,
-    kerdil: numF(['Kerdil (Pkk)', 'Kerdil']) ?? 0,
-    banjir: numF(['Banjir (Ha)', 'Banjir']) ?? 0,
-    status: pickCol(r, ['Status']),
-    catatan: pickCol(r, ['Catatan', 'Catatan/Keterangan']),
-    savedAt: Date.now() + i,
-  }
-}
 
 function hitungLokasi(r: Record<string, unknown>): number {
   const details = (((r.record as Record<string, unknown> | undefined)?.details || r.details || {}) as Record<string, { location?: { latitude?: unknown }; extras?: { location?: { latitude?: unknown } }[]; value?: unknown }>)
