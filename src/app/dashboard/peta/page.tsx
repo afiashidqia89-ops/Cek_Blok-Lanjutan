@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import {
   Map as MapIcon, Upload, FileText, Trash2, Search, RefreshCw, ZoomIn, ZoomOut,
-  Maximize2, Layers, Eye, EyeOff, Loader2,
+  Maximize2, Layers, Eye, EyeOff, Loader2, Download,
 } from 'lucide-react'
 import { loadPetaEngine, PetaEngine, type PetaInstance } from '@/lib/peta-loader'
 
@@ -347,6 +347,34 @@ export default function PetaPage() {
     })
   }
 
+  /* ---- Ekspor PDF georeferensi (siap impor di Avenza Maps) ---- */
+  const [exportingPdf, setExportingPdf] = useState(false)
+  async function unduhPdfAvenza() {
+    const eng = engRef.current, cv = cvRef.current
+    if (!eng || !cv) return
+    const v = eng.getView()
+    if (!v.adaLapisan) { toast.error('Impor dulu peta GeoJSON / PDF Map — hasilnya baru bisa diekspor.'); return }
+    setExportingPdf(true)
+    try {
+      const dataUrl = cv.toDataURL('image/jpeg', 0.92)
+      const tgl = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+      const bytes = PetaEngine.avenzaPdf(dataUrl, v, {
+        title: 'Peta Cek Blok',
+        sub: `diekspor ${tgl} - ${records.length} transaksi, ${temuanCount} temuan`,
+      })
+      const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `peta_cek-blok_${new Date().toISOString().slice(0, 10)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(a.href), 3000)
+      toast.success('PDF georeferensi (siap Avenza) diunduh — buka di aplikasi Avenza Maps untuk melihat posisi GPS.')
+    } catch (e) { toast.error(`Gagal ekspor PDF: ${String((e as Error).message || e)}`) }
+    finally { setExportingPdf(false) }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -429,6 +457,9 @@ export default function PetaPage() {
             </Button>
             <Button variant="ghost" size="sm" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters) }}>
               <RefreshCw className="h-4 w-4 mr-1.5" /> Reset filter
+            </Button>
+            <Button variant="outline" size="sm" onClick={unduhPdfAvenza} disabled={exportingPdf} title="Unduh tampilan peta sebagai PDF georeferensi — bisa diimpor di Avenza Maps">
+              {exportingPdf ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />} Unduh PDF (Avenza)
             </Button>
             <div className="flex items-center gap-2">
               <Switch checked={showTemuan} onCheckedChange={setShowTemuan} id="sw-tm" />
