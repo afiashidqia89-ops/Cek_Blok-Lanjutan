@@ -1,26 +1,13 @@
-cat > apk-build/package.json <<'EOF'
 {
   "name": "cek-blok-apk",
   "version": "1.0.0",
   "private": true,
-  "description": "Pembungkus APK Capacitor untuk aplikasi Cek Blok (dibangun lewat GitHub Actions)",
   "dependencies": {
-    "@capacitor/core": "^6.2.0",
-    "@capacitor/cli": "^6.2.0",
-    "@capacitor/android": "^6.2.0",
-    "@capacitor/app": "^6.0.0",
-    "@capacitor/filesystem": "^6.0.0",
-    "@capacitor/share": "^6.0.0"
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/filesystem": "^6.0.1",
+    "@capacitor/share": "^6.0.2"
   }
 }
-EOF
-cat > apk-build/capacitor.config.json <<'EOF'
-{
-  "appId": "id.plantdigital.cekblok",
-  "appName": "Cek Blok",
-  "webDir": "www",
-  "server": {
-    "androidScheme": "https"
-  }
-}
-EOF
