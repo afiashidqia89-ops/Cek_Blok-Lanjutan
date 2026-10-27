@@ -1,0 +1,142 @@
+// Skema database untuk PRODUKSI serverless (Vercel / Netlify) memakai
+// PostgreSQL gratis dari Neon (neon.tech) atau Supabase (supabase.com).
+//
+// Cara pakai:
+//   bash scripts/use-postgres.sh
+// lalu set DATABASE_URL di .env / dashboard hosting ke URL PostgreSQL Anda.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  username     String        @unique
+  name         String
+  passwordHash String
+  role         String        @default("USER") // SUPERADMIN | ADMIN | USER
+  // Penugasan lingkup data (ceklis bisa lebih dari satu — disimpan dipisah koma).
+  // Kolom kosong = tanpa batasan (melihat semua data), biasanya admin/super admin.
+  estate       String        @default("") // daftar estate, mis. "KBM, BDE"
+  kebun        String        @default("") // daftar kebun, mis. "KBM 1, KBM 3"
+  afdeling     String        @default("") // daftar afdeling, mis. "A, B, C01"
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  records      DataRecord[]
+  tokens       DeviceToken[]
+  exports      DataExport[]
+  mapLayers    MapLayer[]
+}
+
+model DataRecord {
+  id            String   @id @default(cuid())
+  trfKey        String   @unique
+  kodeTransaksi String   @default("")
+  tanggal       String   @default("")
+  pemeriksa     String   @default("")
+  estate        String   @default("")
+  kebun         String   @default("")
+  afdeling      String   @default("")
+  blok          String   @default("")
+  status        String   @default("")
+  savedAt       Float?
+  payload       String
+  perangkat     String   @default("")
+  sizeBytes     Int      @default(0)
+  uploadedById  String?
+  uploadedBy    User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+
+  @@index([tanggal])
+  @@index([blok])
+  @@index([pemeriksa])
+  @@index([uploadedById])
+  @@index([createdAt])
+}
+
+model DeviceToken {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  label      String    @default("")
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model DataExport {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  name        String   @default("")
+  tanggalFrom String   @default("")
+  tanggalTo   String   @default("")
+  kebun       String   @default("")
+  afdeling    String   @default("")
+  blok        String   @default("")
+  pemeriksa   String   @default("")
+  withPhoto   Boolean  @default(true)
+  downloads   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// ===== DATA MASTER (DB Aresta): daftar blok per kebun/afdeling =====
+// Satu baris = satu blok. Aplikasi HP mengambil daftar ini lewat
+// /api/sync/master dan hanya menerima blok sesuai kebun user-nya.
+model BlokMaster {
+  id        String   @id @default(cuid())
+  estate    String
+  kebun     String
+  afdeling  String
+  blok      String
+  luas      Float? // luas (ha)
+  pokok     Int? // jumlah pokok
+  updatedAt DateTime @updatedAt
+
+  @@unique([estate, kebun, afdeling, blok])
+  @@index([kebun])
+  @@index([afdeling])
+}
+
+// Lapisan peta (GeoJSON / raster PDF peta) yang tersimpan di server,
+// sehingga semua pengguna web memakai peta yang sama tanpa impor ulang.
+model MapLayer {
+  id           String   @id @default(cuid())
+  name         String   @default("")
+  type         String   @default("GEOJSON") // GEOJSON | RASTER (gambar PDF peta)
+  content      String // teks GeoJSON, atau dataURL gambar raster
+  meta         String   @default("") // JSON: transformasi georeferensi, daftar field, dsb.
+  sizeBytes    Int      @default(0)
+  isActive     Boolean  @default(true)
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  username  String?
+  action    String
+  detail    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
