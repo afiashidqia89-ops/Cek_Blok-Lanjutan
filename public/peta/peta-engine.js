@@ -352,6 +352,8 @@
     inst.setTemuan = function (list) { temuan = list || []; fitted = false; schedule() }
     inst.setTemuanVisible = v => { temuanVisible = v; schedule() }
     inst.setBlokFill = function (map) { blokFill = map; schedule() }
+    /* View saat ini — dipakai ekspor PDF georeferensi (Avenza) */
+    inst.getView = function () { return { cx: view.cx, cy: view.cy, k: view.k, cos0: cos0, W: W, H: H, dpr: dpr, adaLapisan: layers.some(L => L.visible !== false) } }
 
     function fitBounds(bb) {
       if (!bb || !W || !H) return
@@ -496,8 +498,95 @@
     return inst
   }
 
+  /* ================= Ekspor PDF georeferensi (siap Avenza) =================
+     PDF minimalis TANPA pustaka: gambar JPEG dari kanvas + kamus /Measure
+     (LGINDict GPTS/LPTS) supaya Avenza Maps membaca georeferensinya. */
+  function avenzaPdf(imgDataUrl, view, opt) {
+    opt = opt || {}
+    const Wpx = Math.max(1, Math.round(view.W * (view.dpr || 1)))
+    const Hpx = Math.max(1, Math.round(view.H * (view.dpr || 1)))
+    /* halaman PDF: sisi panjang maks 2000 pt, rasio mengikuti gambar */
+    const sc = Math.min(1, 2000 / Math.max(Wpx, Hpx))
+    const Wp = Math.round(Wpx * sc), Hp = Math.round(Hpx * sc)
+
+    /* pojok geografis tampilan saat ini (dunia x = lon * cos0) */
+    const c0 = Math.abs(view.cos0 || 1) < 0.05 ? 0.05 : (view.cos0 || 1)
+    const lonL = (view.cx - view.W / (2 * view.k)) / c0
+    const lonR = (view.cx + view.W / (2 * view.k)) / c0
+    const latT = view.cy + view.H / (2 * view.k)
+    const latB = view.cy - view.H / (2 * view.k)
+    /* urutan LPTS: BL, BR, TR, TL (0..1, titik nol kiri-bawah halaman) */
+    const lpts = [0, 0, 1, 0, 1, 1, 0, 1]
+    const gpts = [latB, lonL, latB, lonR, latT, lonR, latT, lonL]
+    const f6 = n => Number(n).toFixed(6)
+    const gptsS = gpts.map(f6).join(' ')
+    const lptsS = lpts.map(n => n.toFixed(4)).join(' ')
+    const boundsS = `0 0 ${Wp} 0 ${Wp} ${Hp} 0 ${Hp}`
+
+    const WKT = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+    const jpegB64 = String(imgDataUrl).replace(/^data:image\/jpeg;base64,/, '')
+    const bin = atob(jpegB64)
+    const img = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) img[i] = bin.charCodeAt(i)
+
+    const judul = String(opt.title || 'Peta Cek Blok').replace(/[()\\]/g, ' ')
+    const sub = String(opt.sub || '').replace(/[()\\]/g, ' ')
+    const footer = judul + (sub ? ' - ' + sub : '')
+
+    const enc = new TextEncoder()
+    const head = enc.encode('%PDF-1.6\n%\u00e2\u00e3\u00cf\u00d3\n')
+    const parts = [head]
+    let pos = head.length
+    const offsets = [0, 0, 0, 0, 0, 0, 0, 0] /* indeks 1..7 */
+    function addObj(n, data) {
+      offsets[n] = pos
+      const hdr = enc.encode(`${n} 0 obj\n`)
+      const end = enc.encode('\nendobj\n')
+      let body
+      if (typeof data === 'string') body = enc.encode(data)
+      else if (data && data.stream) {
+        const d = enc.encode(data.dict + '\nstream\n')
+        const e = enc.encode('\nendstream')
+        body = new Uint8Array(d.length + data.stream.length + e.length)
+        body.set(d, 0); body.set(data.stream, d.length); body.set(e, d.length + data.stream.length)
+      } else body = data
+      parts.push(hdr, body, end)
+      pos += hdr.length + body.length + end.length
+    }
+
+    const measure =
+      `<< /Type /Measure /Subtype /LGINDict /Description (${judul})\n` +
+      ` /LGIDict [ << /Version 2.01 /Type /LGIDict /Bounds [${boundsS}]\n` +
+      ` /Projection << /Type /Projection /ProjectionType Geographic /WKT (${WKT}) >>\n` +
+      ` /CoordinateSystem << /Type /LCS /WKT (${WKT}) >>\n` +
+      ` /GPTS [${gptsS}]\n /LPTS [${lptsS}] >> ] >>`
+
+    addObj(1, '<< /Type /Catalog /Pages 2 0 R >>')
+    addObj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>')
+    addObj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${Wp} ${Hp}] ` +
+      `/Resources << /XObject << /Im0 5 0 R >> /Font << /F1 6 0 R >> >> ` +
+      `/Contents 4 0 R ${measure} >>`)
+    const content = `q ${Wp} 0 0 ${Hp} 0 0 cm /Im0 Do Q\nBT /F1 9 Tf 1 0 0 1 10 10 Tm 0.13 0.30 0.16 rg (${footer}) Tj ET\n`
+    addObj(4, { stream: enc.encode(content), dict: `<< /Length ${content.length} >>` })
+    addObj(5, { stream: img, dict: `<< /Type /XObject /Subtype /Image /Width ${Wpx} /Height ${Hpx} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.length} >>` })
+    addObj(6, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>')
+    addObj(7, `<< /Title (${judul}) /Producer (Server Cek Blok) >>`)
+
+    const xrefPos = pos
+    let xref = `xref\n0 8\n0000000000 65535 f \n`
+    for (let n = 1; n <= 7; n++) xref += String(offsets[n]).padStart(10, '0') + ' 00000 n \n'
+    const trailer = `trailer\n<< /Size 8 /Root 1 0 R /Info 7 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`
+    parts.push(enc.encode(xref + trailer))
+
+    const total = parts.reduce((s, p) => s + p.length, 0)
+    const out = new Uint8Array(total)
+    let o = 0
+    for (const p of parts) { out.set(p, o); o += p.length }
+    return out
+  }
+
   window.PetaEngine = {
-    create, extractTemuan, pdfPrepare, symSvg, SYM, SYMBY, UNIT, norm,
+    create, extractTemuan, pdfPrepare, avenzaPdf, symSvg, SYM, SYMBY, UNIT, norm,
     parsePrj, crsFromGeoJson,
   }
 })()
