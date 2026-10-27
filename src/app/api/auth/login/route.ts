@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyPassword, signSession, COOKIE_NAME, sessionCookieOptions } from '@/lib/auth'
+import { ensureSuperAdminExists } from '@/lib/superadmin'
 import { logAudit } from '@/lib/log'
 
 export async function POST(req: Request) {
@@ -25,7 +26,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Akun dinonaktifkan. Hubungi admin.' }, { status: 403 })
   }
 
-  const session = { uid: user.id, username: user.username, name: user.name, role: user.role as 'ADMIN' | 'USER' }
+  // Pastikan ada Super Admin; bila belum ada, akun admin tertua otomatis dinaikkan
+  // sehingga peran terbaru ikut tersimpan dalam sesi yang baru dibuat.
+  await ensureSuperAdminExists()
+  const roleKini = (await db.user.findUnique({ where: { id: user.id }, select: { role: true } }))?.role || user.role
+
+  const session = { uid: user.id, username: user.username, name: user.name, role: roleKini as 'SUPERADMIN' | 'ADMIN' | 'USER' }
   const token = await signSession(session)
   await logAudit(session, 'LOGIN', 'Login berhasil')
 
