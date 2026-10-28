@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import { Database, HardDrive, Users, KeyRound, TrendingUp, FileClock, BarChart3, Map, Layers, ArrowRight, MapPin, Camera } from 'lucide-react'
+import { Database, TrendingUp, BarChart3, Map, Layers, ArrowRight, MapPin, Camera } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts'
 import { jsonFetch } from '@/lib/api'
 
@@ -51,13 +51,15 @@ const WARNA_STATUS: Record<string, string> = {
   'PERLU PERBAIKAN': '#f59e0b',
   'PRIORITAS TINGGI': '#ef4444',
 }
-const WARNA_LAIN = ['#16a34a', '#0ea5e9', '#a855f7', '#f97316', '#64748b', '#14b8a6', '#eab308', '#ec4899']
+const WARNA_LAIN = ['#34d399', '#38bdf8', '#c084fc', '#fb923c', '#94a3b8', '#2dd4bf', '#facc15', '#f472b6']
+
+const TIP = { contentStyle: { background: 'rgba(4,22,14,0.94)', border: '1px solid rgba(52,211,153,0.28)', borderRadius: 12, color: '#d1fae5', fontSize: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }, labelStyle: { color: '#a7f3d0', fontWeight: 600 }, itemStyle: { color: '#ecfdf5' } }
 
 function statusColor(s: string): string {
   const st = (s || '').toLowerCase()
-  if (st.includes('kritis') || st.includes('buruk')) return 'bg-red-100 text-red-800'
-  if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang')) return 'bg-amber-100 text-amber-800'
-  if (st) return 'bg-green-100 text-green-800'
+  if (st.includes('kritis') || st.includes('buruk')) return 'bg-red-500/15 text-red-300'
+  if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang')) return 'bg-amber-500/15 text-amber-300'
+  if (st) return 'bg-emerald-500/15 text-emerald-300'
   return 'bg-muted text-muted-foreground'
 }
 
@@ -73,11 +75,11 @@ export default function DashboardHome() {
 
   if (error) {
     return (
-      <Card className="border-red-200 bg-red-50">
-        <CardContent className="p-4 text-sm text-red-800">
+      <Card className="border-red-500/30 bg-red-500/10">
+        <CardContent className="p-4 text-sm text-red-300">
           <p className="font-semibold">Gagal memuat ringkasan</p>
-          <p className="mt-1 text-red-700">{error}</p>
-          <Button size="sm" variant="outline" className="mt-2 border-red-300 text-red-800 hover:bg-red-100" onClick={() => location.reload()}>
+          <p className="mt-1 text-red-400">{error}</p>
+          <Button size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-300 hover:bg-red-500/15" onClick={() => location.reload()}>
             Muat Ulang
           </Button>
         </CardContent>
@@ -87,10 +89,11 @@ export default function DashboardHome() {
   if (!data) {
     return (
       <div className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        <Skeleton className="h-20 w-full rounded-xl" />
+        <div className="grid gap-6 lg:grid-cols-5">
+          <Skeleton className="h-64 w-full rounded-xl lg:col-span-3" />
+          <Skeleton className="h-64 w-full rounded-xl lg:col-span-2" />
         </div>
-        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     )
   }
@@ -98,17 +101,6 @@ export default function DashboardHome() {
   const adminish = data.role !== 'USER'
   const superadmin = data.role === 'SUPERADMIN'
   const scoped = (data.scopeKebun || '').trim()
-
-  const cards = [
-    { t: 'Total Transaksi', v: String(data.totalRecords), i: Database, d: 'pemeriksaan blok tersimpan' },
-    { t: 'Ukuran Data', v: fmtBytes(data.totalSize), i: HardDrive, d: 'termasuk foto temuan' },
-    { t: 'Blok Diperiksa', v: String(data.blokDiperiksa ?? 0), i: Map, d: `dari ${data.totalBlokMaster ? data.totalBlokMaster.toLocaleString('id-ID') : '…'} blok master` },
-    adminish
-      ? { t: 'Pengguna', v: `${data.activeUsers ?? 0}/${data.totalUsers ?? 0}`, i: Users, d: 'aktif / terdaftar' }
-      : { t: 'Unggahan Saya', v: String(data.ownRecords ?? 0), i: FileClock, d: 'dari perangkat saya' },
-    { t: 'Token Aktif', v: String(data.activeTokens ?? 0), i: KeyRound, d: 'terhubung ke aplikasi' },
-    { t: '24 Jam', v: String(data.records24h ?? 0), i: TrendingUp, d: 'transaksi masuk terbaru' },
-  ]
 
   const tautan = [
     { href: '/dashboard/laporan', i: BarChart3, t: 'Laporan & Grafik', d: 'Tren, status, dan rekap per kebun/afdeling' },
@@ -134,8 +126,8 @@ export default function DashboardHome() {
           </p>
         </div>
         <div className="flex gap-2 text-sm">
-          <Badge variant="outline" className="bg-white"><TrendingUp className="h-3 w-3 mr-1 text-green-700" />7 hari: {data.records7d ?? 0}</Badge>
-          <Badge variant="outline" className="bg-white"><Camera className="h-3 w-3 mr-1 text-green-700" />Data master: {data.totalBlokMaster != null ? data.totalBlokMaster.toLocaleString('id-ID') + ' blok' : '—'}</Badge>
+          <Badge variant="outline" className="bg-card"><TrendingUp className="h-3 w-3 mr-1 text-emerald-300" />7 hari: {data.records7d ?? 0}</Badge>
+          <Badge variant="outline" className="bg-card"><Camera className="h-3 w-3 mr-1 text-emerald-300" />Data master: {data.totalBlokMaster != null ? data.totalBlokMaster.toLocaleString('id-ID') + ' blok' : '—'}</Badge>
         </div>
       </div>
 
@@ -147,42 +139,24 @@ export default function DashboardHome() {
             <Link
               key={q.href}
               href={q.href}
-              className="group flex items-center gap-3 rounded-xl border border-green-100 bg-white/70 p-4 transition-all hover:border-green-300 hover:shadow-md"
+              className="group flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-card/70 p-4 transition-all hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-950/50"
             >
-              <div className="rounded-lg bg-green-100 p-2.5 text-green-700 transition-colors group-hover:bg-green-700 group-hover:text-white">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-500/25 to-emerald-500/5 text-emerald-300 ring-1 ring-emerald-400/25 transition-all group-hover:from-emerald-500 group-hover:to-emerald-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-emerald-950/50">
                 <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-green-900">{q.t}</p>
+                <p className="text-sm font-semibold text-emerald-100">{q.t}</p>
                 <p className="truncate text-xs text-muted-foreground">{q.d}</p>
               </div>
-              <ArrowRight className="h-4 w-4 text-green-300 transition-transform group-hover:translate-x-0.5 group-hover:text-green-600" />
+              <ArrowRight className="h-4 w-4 text-green-300 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-300" />
             </Link>
-          )
-        })}
-      </div>
-
-      {/* Kartu angka */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {cards.map((c) => {
-          const Icon = c.i
-          return (
-            <Card key={c.t} className="border-green-100">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="rounded-xl bg-green-100 p-3 text-green-700"><Icon className="h-6 w-6" /></div>
-                <div className="min-w-0">
-                  <p className="text-2xl font-bold leading-tight">{c.v}</p>
-                  <p className="text-xs text-muted-foreground truncate">{c.t} · {c.d}</p>
-                </div>
-              </CardContent>
-            </Card>
           )
         })}
       </div>
 
       {/* Grafik */}
       <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3 border-green-100">
+        <Card className="lg:col-span-3 border-emerald-500/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Tren Pemeriksaan 14 Hari</CardTitle>
             <CardDescription>Jumlah transaksi masuk per tanggal</CardDescription>
@@ -190,17 +164,17 @@ export default function DashboardHome() {
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.tren14 || []} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.14)" vertical={false} />
                 <XAxis dataKey="tanggal" tickFormatter={(v: string) => v.slice(5)} fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                 <YAxis allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
-                <RTooltip formatter={(v) => [`${v} transaksi`, 'Jumlah']} labelFormatter={(l) => `Tanggal ${l}`} />
-                <Bar dataKey="jumlah" fill="#16a34a" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <RTooltip {...TIP} formatter={(v) => [`${v} transaksi`, 'Jumlah']} labelFormatter={(l) => `Tanggal ${l}`} />
+                <Bar dataKey="jumlah" fill="#34d399" radius={[4, 4, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2 border-green-100">
+        <Card className="lg:col-span-2 border-emerald-500/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Status Blok</CardTitle>
             <CardDescription>Distribusi kondisi blok yang diperiksa</CardDescription>
@@ -215,7 +189,7 @@ export default function DashboardHome() {
                         <Cell key={x.status} fill={WARNA_STATUS[x.status.toUpperCase()] || WARNA_LAIN[i % WARNA_LAIN.length]} />
                       ))}
                     </Pie>
-                    <RTooltip formatter={(v, n) => [`${v} transaksi`, String(n)]} />
+                    <RTooltip {...TIP} formatter={(v, n) => [`${v} transaksi`, String(n)]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-1.5 text-xs">
@@ -237,9 +211,9 @@ export default function DashboardHome() {
 
       {/* Kebun teratas + tabel terbaru */}
       {(data.perKebun || []).length > 0 && (
-        <Card className="border-green-100">
+        <Card className="border-emerald-500/20">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-1.5"><MapPin className="h-4 w-4 text-green-700" /> Kebun Tersibuk</CardTitle>
+            <CardTitle className="text-base flex items-center gap-1.5"><MapPin className="h-4 w-4 text-emerald-300" /> Kebun Tersibuk</CardTitle>
             <CardDescription>8 kebun dengan transaksi terbanyak</CardDescription>
           </CardHeader>
           <CardContent className="h-48">
@@ -247,8 +221,8 @@ export default function DashboardHome() {
               <BarChart data={data.perKebun} layout="vertical" margin={{ top: 0, right: 16, left: 10, bottom: 0 }}>
                 <XAxis type="number" allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis type="category" dataKey="kebun" width={90} fontSize={11} tickLine={false} axisLine={false} />
-                <RTooltip formatter={(v) => [`${v} transaksi`, 'Jumlah']} />
-                <Bar dataKey="jumlah" fill="#15803d" radius={[0, 4, 4, 0]} maxBarSize={16} />
+                <RTooltip {...TIP} formatter={(v) => [`${v} transaksi`, 'Jumlah']} />
+                <Bar dataKey="jumlah" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={16} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -256,7 +230,7 @@ export default function DashboardHome() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3 border-green-100">
+        <Card className="lg:col-span-3 border-emerald-500/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Transaksi Terbaru</CardTitle>
             <CardDescription>8 pemeriksaan terakhir yang masuk ke server</CardDescription>
@@ -301,7 +275,7 @@ export default function DashboardHome() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2 border-green-100">
+        <Card className="lg:col-span-2 border-emerald-500/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Aktivitas Terakhir</CardTitle>
             <CardDescription>{adminish ? 'Log server (admin)' : 'Catatan aktivitas Anda'}</CardDescription>
@@ -325,7 +299,7 @@ export default function DashboardHome() {
             </div>
             {adminish && (
               <div className="border-t p-3">
-                <Link href="/dashboard/settings" className="text-sm font-medium text-green-700 hover:underline">
+                <Link href="/dashboard/settings" className="text-sm font-medium text-emerald-300 hover:underline">
                   Lihat semua log →
                 </Link>
               </div>
