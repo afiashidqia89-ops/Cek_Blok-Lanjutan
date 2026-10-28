@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getSession } from '@/lib/auth'
-import { recordWhere, type RecordFilter } from '@/lib/ingest'
+import { recordWhere, computeKey, type RecordFilter } from '@/lib/ingest'
 import { getSettings, boolSetting } from '@/lib/settings'
 import { dbErrorResponse, scopeRecordWhere, scopeUser } from '@/lib/api'
+import { logAudit } from '@/lib/log'
 
 /**
  * Daftar transaksi pemeriksaan (untuk tabel halaman Data).
@@ -27,6 +28,7 @@ export async function GET(req: Request) {
       q: sp.get('q') || undefined,
       tanggalFrom: sp.get('tanggalFrom') || undefined,
       tanggalTo: sp.get('tanggalTo') || undefined,
+      estate: sp.get('estate') || undefined,
       kebun: sp.get('kebun') || undefined,
       afdeling: sp.get('afdeling') || undefined,
       blok: sp.get('blok') || undefined,
@@ -105,6 +107,78 @@ export async function GET(req: Request) {
       scope: sc,
       canDeleteOwn: boolSetting(settings.usersCanDeleteOwnData),
     })
+  } catch (e) {
+    return dbErrorResponse(e)
+  }
+}
+
+/**
+ * Tambah Pemeriksaan manual dari web (tombol "+ Tambah Pemeriksaan").
+ * Data dibentuk sama seperti transaksi dari HP (payload + kolom terpisah),
+ * lengkap dengan kode transaksi otomatis CB-YYYYMMDD-HHMMSS.
+ */
+export async function POST(req: Request) {
+  const s = await getSession()
+  if (!s) return NextResponse.json({ ok: false, error: 'Belum login' }, { status: 401 })
+
+  try {
+    const b = (await req.json().catch(() => ({}))) as Record<string, unknown>
+    const str = (v: unknown) => String(v ?? '').trim()
+    const tanggal = str(b.tanggal)
+    const blok = str(b.blok).toUpperCase()
+    if (!tanggal) return NextResponse.json({ ok: false, error: 'Tanggal wajib diisi' }, { status: 400 })
+    if (!blok) return NextResponse.json({ ok: false, error: 'Kode blok wajib diisi' }, { status: 400 })
+
+    const stamp = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const kode =
+      str(b.kodeTransaksi) ||
+      `CB-${stamp.getFullYear()}${pad(stamp.getMonth() + 1)}${pad(stamp.getDate())}-${pad(stamp.getHours())}${pad(stamp.getMinutes())}${pad(stamp.getSeconds())}`
+
+    const record: Record<string, unknown> = {
+      kodeTransaksi: kode,
+      tanggal,
+      pemeriksa: str(b.pemeriksa) || s.name,
+      pt: str(b.estate),
+      estate: str(b.estate),
+      kebun: str(b.kebun).toUpperCase(),
+      afdeling: str(b.afdeling),
+      blok,
+      status: str(b.status),
+      catatan: str(b.catatan),
+      noPasarKanan: str(b.noBarisKanan),
+      noPasarKiri: str(b.noBarisKiri),
+      ancak: str(b.ancak),
+      ancakStatus: str(b.ancakStatus),
+      luas: b.luas === '' || b.luas == null ? undefined : Number(b.luas),
+      pokok: b.pokok === '' || b.pokok == null ? undefined : Number(b.pokok),
+      details: {},
+      savedAt: stamp.getTime(),
+      sumber: 'WEB',
+    }
+
+    const payload = JSON.stringify(record)
+    await db.dataRecord.create({
+      data: {
+        trfKey: computeKey(record),
+        kodeTransaksi: kode,
+        tanggal,
+        pemeriksa: String(record.pemeriksa),
+        estate: String(record.estate),
+        kebun: String(record.kebun),
+        afdeling: String(record.afdeling),
+        blok,
+        status: String(record.status),
+        savedAt: stamp.getTime(),
+        payload,
+        perangkat: 'WEB',
+        sizeBytes: Buffer.byteLength(payload, 'utf8'),
+        uploadedById: s.uid,
+      },
+    })
+
+    await logAudit(s, 'TAMBAH_DATA_WEB', `kode: ${kode} · blok ${blok}`)
+    return NextResponse.json({ ok: true, kode })
   } catch (e) {
     return dbErrorResponse(e)
   }
