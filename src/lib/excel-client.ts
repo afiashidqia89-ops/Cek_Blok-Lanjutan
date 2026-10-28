@@ -14,6 +14,16 @@ declare global {
   }
 }
 
+export interface ExcelSheetImage {
+  /** Data URL foto (data:image/jpeg;base64,....) */
+  dataUrl: string
+  /** Posisi 0-based: row 0 = baris header, col 0 = kolom pertama */
+  row: number
+  col: number
+  width: number
+  height: number
+}
+
 export interface ExcelWorksheet {
   name: string
   columns: { header: string; key: string; width?: number }[]
@@ -22,6 +32,10 @@ export interface ExcelWorksheet {
   cellStyles?: Record<string, { numFmt?: string; bold?: boolean; fill?: string; fontColor?: string }>
   /** Isi status diwarnai otomatis: BAIK hijau, PERLU PERBAIKAN kuning, PRIORITAS TINGGI merah */
   colorStatusKey?: string
+  /** Foto yang ditanam ke sel (dipakai sheet Detail Temuan + Foto) */
+  images?: ExcelSheetImage[]
+  /** Tinggi baris ekstra (poin, kunci = nomor baris ExcelJS 1-based) */
+  rowHeights?: Record<number, number>
 }
 
 export interface ExcelWorkbook {
@@ -29,6 +43,7 @@ export interface ExcelWorkbook {
   created: Date
   addWorksheet(name: string, opts?: { views?: { state: string; ySplit: number }[] }): ExcelWs
   worksheets: ExcelWs[]
+  addImage(img: { base64: string; extension: string }): number
   xlsx: { writeBuffer(): Promise<ArrayBuffer>; load(buf: ArrayBuffer): Promise<void> }
 }
 
@@ -38,6 +53,7 @@ export interface ExcelWs {
   columns: { header: string; key: string; width?: number }[]
   addRow(v: Record<string, unknown>): ExcelRow
   getRow(n: number): ExcelRow
+  addImage(imgId: number, anchor: { tl: { col: number; row: number }; ext: { width: number; height: number }; editAs?: string }): void
 }
 
 export interface ExcelHeadRow {
@@ -207,6 +223,28 @@ export async function buildWorkbook(sheets: ExcelWorksheet[], creator = 'Server 
         const v = String(r[sh.colorStatusKey] ?? '').toUpperCase()
         const fill = STATUS_FILL[v]
         if (fill) row.getCell(sh.colorStatusKey).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } }
+      }
+    }
+    // Tinggi baris ekstra (mis. baris yang memuat foto)
+    if (sh.rowHeights) {
+      for (const [rn, h] of Object.entries(sh.rowHeights)) {
+        try { ws.getRow(Number(rn)).height = h } catch { /* abaikan */ }
+      }
+    }
+    // Tanam foto (sama seperti ekspor aplikasi HP: anchor kiri-atas kolom Foto)
+    if (sh.images?.length) {
+      for (const im of sh.images) {
+        const ext = /image\/png/i.test(im.dataUrl) ? 'png' : 'jpeg'
+        const b64 = im.dataUrl.slice(im.dataUrl.indexOf(',') + 1)
+        if (!b64) continue
+        try {
+          const id = wb.addImage({ base64: b64, extension: ext })
+          ws.addImage(id, {
+            tl: { col: im.col + 0.03, row: im.row + 0.04 },
+            ext: { width: im.width, height: im.height },
+            editAs: 'oneCell',
+          })
+        } catch { /* foto korup -> lewati, baris tetap terisi teks */ }
       }
     }
   }

@@ -19,6 +19,8 @@ export interface IngestResult {
   diterima: number
   baru: number
   duplikat: number
+  /** transaksi lama yang ISI-nya diperbarui (mis. kirim ulang kini dengan foto) */
+  diperbarui: number
   perangkat: string
 }
 
@@ -39,6 +41,7 @@ export async function ingestTransfer(
   let diterima = 0
   let baru = 0
   let duplikat = 0
+  let diperbarui = 0
 
   for (const raw of o.records) {
     if (!raw || typeof raw !== 'object') continue
@@ -47,9 +50,24 @@ export async function ingestTransfer(
     diterima++
     const key = computeKey(r)
     const payload = JSON.stringify(r)
-    const exists = await db.dataRecord.findUnique({ where: { trfKey: key }, select: { id: true } })
+    const exists = await db.dataRecord.findUnique({ where: { trfKey: key }, select: { id: true, payload: true } })
     if (exists) {
-      duplikat++
+      // Kirim ulang transaksi yang sama: bila isinya berubah (mis. dulu gagal
+      // foto, kini ada foto) PERBARUI isi di server — jangan sekadar dilewati,
+      // supaya foto/koordinat temuan akhirnya bisa muncul di web.
+      if (exists.payload === payload) {
+        duplikat++
+        continue
+      }
+      try {
+        await db.dataRecord.update({
+          where: { id: exists.id },
+          data: { payload, sizeBytes: Buffer.byteLength(payload, 'utf8') },
+        })
+        diperbarui++
+      } catch {
+        duplikat++ // aman terhadap race condition
+      }
       continue
     }
     try {
@@ -76,7 +94,7 @@ export async function ingestTransfer(
       duplikat++ // aman terhadap race condition unique constraint
     }
   }
-  return { diterima, baru, duplikat, perangkat }
+  return { diterima, baru, duplikat, diperbarui, perangkat }
 }
 
 /** Bangun berkas transfer JSON persis seperti format aplikasi Cek Blok */
