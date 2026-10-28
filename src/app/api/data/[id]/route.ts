@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { getSession } from '@/lib/auth'
 import { getSettings, boolSetting } from '@/lib/settings'
 import { logAudit } from '@/lib/log'
-import { dbErrorResponse, scopeKebun } from '@/lib/api'
+import { dbErrorResponse, scopeUser } from '@/lib/api'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -15,19 +15,26 @@ export async function GET(_req: Request, ctx: Ctx) {
 
   try {
     const settings = await getSettings()
-    const seeAll = s.role === 'ADMIN' || boolSetting(settings.usersCanSeeAllData)
+    // SUPERADMIN & ADMIN selalu boleh melihat semua data
+    const seeAll = s.role === 'ADMIN' || s.role === 'SUPERADMIN' || boolSetting(settings.usersCanSeeAllData)
     const row = await db.dataRecord.findUnique({
       where: { id },
       include: { uploadedBy: { select: { username: true } } },
     })
     if (!row) return NextResponse.json({ ok: false, error: 'Data tidak ditemukan' }, { status: 404 })
-    // lingkup kebun: user non-admin dengan kebun penugasan hanya boleh detail kebunnya
-    const kb = scopeKebun(s)
-    if (kb && String(row.kebun || '').trim() !== kb) {
-      return NextResponse.json({ ok: false, error: 'Data di luar kebun Anda' }, { status: 403 })
-    }
-    if (!seeAll && row.uploadedById !== s.uid) {
-      return NextResponse.json({ ok: false, error: 'Tidak berhak' }, { status: 403 })
+    // lingkup penugasan: user non-admin hanya boleh detail data dalam lingkupnya
+    const sc = scopeUser(s)
+    if (!sc.semua) {
+      const dalamLingkup =
+        (!sc.kebun.length || sc.kebun.includes(String(row.kebun || '').trim())) &&
+        (!sc.estate.length || sc.estate.includes(String(row.estate || '').trim())) &&
+        (!sc.afdeling.length || sc.afdeling.includes(String(row.afdeling || '').trim()))
+      if (!dalamLingkup) {
+        return NextResponse.json({ ok: false, error: 'Data di luar lingkup Anda' }, { status: 403 })
+      }
+      if (!seeAll && row.uploadedById !== s.uid) {
+        return NextResponse.json({ ok: false, error: 'Tidak berhak' }, { status: 403 })
+      }
     }
     return NextResponse.json({
       ok: true,
@@ -45,15 +52,24 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params
 
   try {
-    const row = await db.dataRecord.findUnique({ where: { id }, select: { id: true, uploadedById: true, kebun: true, kodeTransaksi: true } })
+    const row = await db.dataRecord.findUnique({ where: { id }, select: { id: true, uploadedById: true, kebun: true, estate: true, afdeling: true, kodeTransaksi: true } })
     if (!row) return NextResponse.json({ ok: false, error: 'Data tidak ditemukan' }, { status: 404 })
 
-    const kb = scopeKebun(s)
-    if (kb && String(row.kebun || '').trim() !== kb) {
-      return NextResponse.json({ ok: false, error: 'Data di luar kebun Anda' }, { status: 403 })
+    // ⚠️ PERBAIKAN: sebelumnya cek "s.role !== 'ADMIN'" membuat SUPERADMIN
+    // masuk jalur user biasa sehingga hapus selalu gagal "Tidak berhak".
+    const adminish = s.role === 'ADMIN' || s.role === 'SUPERADMIN'
+    const sc = scopeUser(s)
+    if (!sc.semua) {
+      const dalamLingkup =
+        (!sc.kebun.length || sc.kebun.includes(String(row.kebun || '').trim())) &&
+        (!sc.estate.length || sc.estate.includes(String(row.estate || '').trim())) &&
+        (!sc.afdeling.length || sc.afdeling.includes(String(row.afdeling || '').trim()))
+      if (!dalamLingkup) {
+        return NextResponse.json({ ok: false, error: 'Data di luar lingkup Anda' }, { status: 403 })
+      }
     }
 
-    if (s.role !== 'ADMIN') {
+    if (!adminish) {
       const settings = await getSettings()
       const canDeleteOwn = boolSetting(settings.usersCanDeleteOwnData)
       if (!canDeleteOwn || row.uploadedById !== s.uid) {
