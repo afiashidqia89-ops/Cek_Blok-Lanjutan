@@ -89,7 +89,7 @@ function SettingsIsi() {
             <Skeleton className="h-72 w-full rounded-xl" />
           ) : (
             <div className="space-y-4 max-w-2xl">
-              <Card className="border-green-100">
+              <Card className="border-emerald-500/20">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Identitas Server</CardTitle>
                   <CardDescription>Tampilan nama server pada web & aplikasi</CardDescription>
@@ -106,7 +106,7 @@ function SettingsIsi() {
                 </CardContent>
               </Card>
 
-              <Card className="border-green-100">
+              <Card className="border-emerald-500/20">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Sinkronisasi Aplikasi</CardTitle>
                   <CardDescription>Upload/download data dari aplikasi Cek Blok di HP</CardDescription>
@@ -127,7 +127,7 @@ function SettingsIsi() {
                 </CardContent>
               </Card>
 
-              <Card className="border-green-100">
+              <Card className="border-emerald-500/20">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Hak Pengguna</CardTitle>
                   <CardDescription>Aturan akses untuk pengguna biasa (bukan admin)</CardDescription>
@@ -150,7 +150,7 @@ function SettingsIsi() {
                 </CardContent>
               </Card>
 
-              <Button onClick={save} disabled={saving} className="bg-green-700 hover:bg-green-800">
+              <Button onClick={save} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
                 <Save className="h-4 w-4 mr-1.5" /> {saving ? 'Menyimpan…' : 'Simpan Pengaturan'}
               </Button>
             </div>
@@ -158,7 +158,7 @@ function SettingsIsi() {
         </TabsContent>
 
         <TabsContent value="log" className="mt-4">
-          <Card className="border-green-100">
+          <Card className="border-emerald-500/20">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
