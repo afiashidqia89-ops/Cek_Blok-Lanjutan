@@ -41,8 +41,10 @@ interface FacetsData {
   scopeKebun?: string
 }
 
-const HIJAU = '#16a34a'
-const HIJAU_MUDA = '#4ade80'
+const HIJAU = '#34d399'
+const HIJAU_MUDA = '#6ee7b7'
+
+const TIP = { contentStyle: { background: 'rgba(4,22,14,0.94)', border: '1px solid rgba(52,211,153,0.28)', borderRadius: 12, color: '#d1fae5', fontSize: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }, labelStyle: { color: '#a7f3d0', fontWeight: 600 }, itemStyle: { color: '#ecfdf5' } }
 const AMBER = '#f59e0b'
 const MERAH = '#dc2626'
 
@@ -121,7 +123,7 @@ export default function HalamanLaporan() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <BarChart3 className="h-6 w-6 text-green-700" /> Laporan Pemeriksaan
+            <BarChart3 className="h-6 w-6 text-emerald-300" /> Laporan Pemeriksaan
           </h1>
           <p className="text-sm text-muted-foreground">
             Grafik & rekap data pemeriksaan blok {scoped ? `— lingkup kebun ${data?.scopeKebun}` : 'seluruh data yang dapat Anda akses'}.
@@ -139,12 +141,12 @@ export default function HalamanLaporan() {
               {(facets?.kebun || []).map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           )}
-          <div className="flex rounded-lg border border-green-200 bg-green-50 p-1">
+          <div className="flex rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-1">
             {([['7', '7 Hari'], ['30', '30 Hari'], ['all', 'Semua']] as const).map(([v, l]) => (
               <button
                 key={v}
                 onClick={() => setRentang(v)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${rentang === v ? 'bg-green-700 text-white shadow-sm' : 'text-green-800 hover:bg-green-100'}`}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${rentang === v ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-200 hover:bg-emerald-500/15'}`}
               >
                 {l}
               </button>
@@ -154,13 +156,13 @@ export default function HalamanLaporan() {
       </div>
 
       {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="flex items-start gap-3 p-4 text-sm text-red-800">
+        <Card className="border-red-500/30 bg-red-500/10">
+          <CardContent className="flex items-start gap-3 p-4 text-sm text-red-300">
             <span className="mt-0.5">⚠️</span>
             <div>
               <p className="font-semibold">Gagal memuat laporan</p>
-              <p className="mt-0.5 text-red-700">{error}</p>
-              <Button size="sm" variant="outline" className="mt-2 border-red-300 text-red-800 hover:bg-red-100" onClick={muat}>
+              <p className="mt-0.5 text-red-400">{error}</p>
+              <Button size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-300 hover:bg-red-500/15" onClick={muat}>
                 Coba Lagi
               </Button>
             </div>
@@ -186,9 +188,9 @@ export default function HalamanLaporan() {
             ].map((c) => {
               const Icon = c.i
               return (
-                <Card key={c.t} className="border-green-100 transition-shadow hover:shadow-md">
+                <Card key={c.t} className="border-emerald-500/20 transition-shadow hover:shadow-md">
                   <CardContent className="flex items-center gap-4 p-5">
-                    <div className="rounded-xl bg-gradient-to-br from-green-600 to-green-700 p-3 text-white shadow-sm">
+                    <div className="rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-3 text-white shadow-sm">
                       <Icon className="h-6 w-6" />
                     </div>
                     <div className="min-w-0">
@@ -202,10 +204,10 @@ export default function HalamanLaporan() {
           </div>
 
           {kosong ? (
-            <Card className="border-dashed border-green-200 bg-green-50/40">
+            <Card className="border-dashed border-emerald-500/25 bg-emerald-500/10">
               <CardContent className="flex flex-col items-center gap-2 py-14 text-center">
                 <Sprout className="h-10 w-10 text-green-300" />
-                <p className="font-semibold text-green-900">Belum ada data pada rentang ini</p>
+                <p className="font-semibold text-emerald-100">Belum ada data pada rentang ini</p>
                 <p className="max-w-md text-sm text-muted-foreground">
                   Data muncul otomatis setelah aplikasi HP menekan &quot;Kirim ke Server&quot; atau berkas transfer diunggah lewat menu Data Pemeriksaan. Coba ubah rentang waktu atau filter kebun.
                 </p>
@@ -214,7 +216,7 @@ export default function HalamanLaporan() {
           ) : (
             <>
               {/* Grafik utama: tren harian */}
-              <Card className="border-green-100">
+              <Card className="border-emerald-500/20">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Tren Pemeriksaan per Hari</CardTitle>
                   <CardDescription>Jumlah transaksi pemeriksaan yang masuk setiap hari</CardDescription>
@@ -229,10 +231,11 @@ export default function HalamanLaporan() {
                             <stop offset="100%" stopColor={HIJAU} stopOpacity={0.03} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                        <XAxis dataKey="tanggal" tickFormatter={labelTanggal} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.14)" vertical={false} />
+                        <XAxis dataKey="tanggal" tickFormatter={labelTanggal} tick={{ fontSize: 11 }} stroke="rgba(148,163,184,0.55)" />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="rgba(148,163,184,0.55)" />
                         <Tooltip
+                          {...TIP}
                           formatter={(v: number) => [`${v} transaksi`, 'Pemeriksaan']}
                           labelFormatter={(l: string) => `Tanggal ${l}`}
                         />
@@ -245,7 +248,7 @@ export default function HalamanLaporan() {
 
               <div className="grid gap-4 lg:grid-cols-2">
                 {/* Status temuan */}
-                <Card className="border-green-100">
+                <Card className="border-emerald-500/20">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Komposisi Status Blok</CardTitle>
                     <CardDescription>Perbandingan kondisi blok hasil pemeriksaan</CardDescription>
@@ -269,8 +272,8 @@ export default function HalamanLaporan() {
                                 <Cell key={s.status} fill={warnaStatus(s.status)} />
                               ))}
                             </Pie>
-                            <Tooltip formatter={(v: number, n: string) => [`${v} transaksi`, n]} />
-                            <Legend verticalAlign="bottom" height={28} iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                            <Tooltip {...TIP} formatter={(v: number, n: string) => [`${v} transaksi`, n]} />
+                            <Legend verticalAlign="bottom" height={28} iconType="circle" wrapperStyle={{ fontSize: 12, color: '#a7f3d0' }} />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
@@ -281,7 +284,7 @@ export default function HalamanLaporan() {
                 </Card>
 
                 {/* Per kebun */}
-                <Card className="border-green-100">
+                <Card className="border-emerald-500/20">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Pemeriksaan per Kebun</CardTitle>
                     <CardDescription>12 kebun dengan transaksi terbanyak</CardDescription>
@@ -290,10 +293,10 @@ export default function HalamanLaporan() {
                     <div className="h-60 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={data.perKebun} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                          <YAxis type="category" dataKey="kebun" width={64} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                          <Tooltip formatter={(v: number) => [`${v} transaksi`, 'Jumlah']} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.14)" horizontal={false} />
+                          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} stroke="rgba(148,163,184,0.55)" />
+                          <YAxis type="category" dataKey="kebun" width={64} tick={{ fontSize: 11 }} stroke="rgba(148,163,184,0.55)" />
+                          <Tooltip {...TIP} formatter={(v: number) => [`${v} transaksi`, 'Jumlah']} />
                           <Bar dataKey="jumlah" fill={HIJAU} radius={[0, 6, 6, 0]} barSize={14} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -302,7 +305,7 @@ export default function HalamanLaporan() {
                 </Card>
 
                 {/* Per afdeling */}
-                <Card className="border-green-100">
+                <Card className="border-emerald-500/20">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Pemeriksaan per Afdeling</CardTitle>
                     <CardDescription>12 afdeling dengan transaksi terbanyak</CardDescription>
@@ -311,10 +314,10 @@ export default function HalamanLaporan() {
                     <div className="h-60 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={data.perAfdeling} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                          <YAxis type="category" dataKey="afdeling" width={72} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                          <Tooltip formatter={(v: number) => [`${v} transaksi`, 'Jumlah']} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.14)" horizontal={false} />
+                          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} stroke="rgba(148,163,184,0.55)" />
+                          <YAxis type="category" dataKey="afdeling" width={72} tick={{ fontSize: 11 }} stroke="rgba(148,163,184,0.55)" />
+                          <Tooltip {...TIP} formatter={(v: number) => [`${v} transaksi`, 'Jumlah']} />
                           <Bar dataKey="jumlah" fill={HIJAU_MUDA} radius={[0, 6, 6, 0]} barSize={14} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -323,7 +326,7 @@ export default function HalamanLaporan() {
                 </Card>
 
                 {/* Per pemeriksa */}
-                <Card className="border-green-100">
+                <Card className="border-emerald-500/20">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Aktivitas Pemeriksa</CardTitle>
                     <CardDescription>10 pemeriksa dengan transaksi terbanyak</CardDescription>
@@ -342,7 +345,7 @@ export default function HalamanLaporan() {
                             <TableRow key={p.pemeriksa}>
                               <TableCell className="font-medium">{p.pemeriksa}</TableCell>
                               <TableCell className="text-right">
-                                <Badge variant="outline" className="bg-green-50 text-green-800">{p.jumlah}</Badge>
+                                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-200">{p.jumlah}</Badge>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -357,7 +360,7 @@ export default function HalamanLaporan() {
               </div>
 
               {/* Top blok */}
-              <Card className="border-green-100">
+              <Card className="border-emerald-500/20">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Blok Paling Sering Diperiksa</CardTitle>
                   <CardDescription>10 blok teratas pada rentang ini</CardDescription>
@@ -365,8 +368,8 @@ export default function HalamanLaporan() {
                 <CardContent className="pt-2">
                   <div className="flex flex-wrap gap-2">
                     {data.topBlok.map((b) => (
-                      <Badge key={b.blok} variant="outline" className="border-green-200 bg-green-50 px-3 py-1.5 text-sm text-green-900">
-                        {b.blok} <span className="ml-1.5 font-bold text-green-700">×{b.jumlah}</span>
+                      <Badge key={b.blok} variant="outline" className="border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-sm text-emerald-100">
+                        {b.blok} <span className="ml-1.5 font-bold text-emerald-300">×{b.jumlah}</span>
                       </Badge>
                     ))}
                     {!data.topBlok.length && <p className="text-sm text-muted-foreground">Belum ada data.</p>}
@@ -378,10 +381,10 @@ export default function HalamanLaporan() {
 
           {/* Tautan cepat */}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="border-green-200 text-green-800 hover:bg-green-50" onClick={() => router.push('/dashboard/data')}>
+            <Button variant="outline" className="border-emerald-500/25 text-emerald-200 hover:bg-emerald-500/10" onClick={() => router.push('/dashboard/data')}>
               <Database className="mr-2 h-4 w-4" /> Lihat Data Lengkap
             </Button>
-            <Button variant="outline" className="border-green-200 text-green-800 hover:bg-green-50" onClick={() => router.push('/dashboard/peta')}>
+            <Button variant="outline" className="border-emerald-500/25 text-emerald-200 hover:bg-emerald-500/10" onClick={() => router.push('/dashboard/peta')}>
               <MapIcon className="mr-2 h-4 w-4" /> Buka Peta Blok
             </Button>
             <span className="ml-auto self-center text-xs text-muted-foreground">
