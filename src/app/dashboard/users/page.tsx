@@ -82,7 +82,7 @@ function CeklisLingkup({
         <div className="rounded-md border p-2.5">
           <div className="flex items-center justify-between mb-1.5">
             <Label className="text-xs font-semibold">Estate</Label>
-            <button type="button" className="text-[11px] text-green-700 hover:underline"
+            <button type="button" className="text-[11px] text-emerald-700 hover:underline"
               onClick={() => { setSelEstate([]); setSelKebun([]); setSelAfd([]) }}>Semua / bersihkan</button>
           </div>
           <div className="max-h-36 space-y-1.5 overflow-y-auto pr-1">
@@ -133,9 +133,9 @@ function LingkupBadges({ u }: { u: Pick<UserRow, 'estate' | 'kebun' | 'afdeling'
   if (!e.length && !k.length && !a.length) return <span className="text-xs text-muted-foreground">Semua data</span>
   return (
     <div className="flex flex-wrap gap-1">
-      {e.map((x) => <Badge key={`e${x}`} variant="secondary" className="bg-emerald-50 text-emerald-800 text-[10px]">Estate {x}</Badge>)}
-      {k.map((x) => <Badge key={`k${x}`} variant="secondary" className="bg-green-50 text-green-800 text-[10px]">Kebun {x}</Badge>)}
-      {a.map((x) => <Badge key={`a${x}`} variant="secondary" className="bg-lime-50 text-lime-800 text-[10px]">Afd {x}</Badge>)}
+      {e.map((x) => <Badge key={`e${x}`} variant="secondary" className="bg-emerald-600/10 text-emerald-700 text-[10px]">Estate {x}</Badge>)}
+      {k.map((x) => <Badge key={`k${x}`} variant="secondary" className="bg-emerald-600/10 text-emerald-900 text-[10px]">Kebun {x}</Badge>)}
+      {a.map((x) => <Badge key={`a${x}`} variant="secondary" className="bg-lime-500/15 text-lime-300 text-[10px]">Afd {x}</Badge>)}
     </div>
   )
 }
@@ -241,12 +241,12 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold tracking-tight">Pengguna</h1>
           <p className="text-sm text-muted-foreground">Daftarkan akun + ceklis estate/kebun/afdelingnya — data web &amp; HP otomatis menyesuaikan.</p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="bg-green-700 hover:bg-green-800">
+        <Button onClick={() => setAddOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
           <UserPlus className="h-4 w-4 mr-1.5" /> Daftarkan Pengguna
         </Button>
       </div>
 
-      <Card className="border-green-100">
+      <Card className="border-emerald-600/15">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -275,15 +275,15 @@ export default function UsersPage() {
                     <TableCell className="max-w-[260px]"><LingkupBadges u={u} /></TableCell>
                     <TableCell>
                       <Badge variant={u.role === 'USER' ? 'secondary' : 'default'}
-                        className={u.role === 'USER' ? '' : 'bg-green-700'}>
+                        className={u.role === 'USER' ? '' : 'bg-emerald-600'}>
                         {roleLabel(u.role)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       {u.isActive ? (
-                        <Badge className="border-transparent bg-green-100 text-green-800">Aktif</Badge>
+                        <Badge className="border-transparent bg-emerald-600/12 text-emerald-900">Aktif</Badge>
                       ) : (
-                        <Badge className="border-transparent bg-red-100 text-red-800">Nonaktif</Badge>
+                        <Badge className="border-transparent bg-red-500/15 text-red-600">Nonaktif</Badge>
                       )}
                     </TableCell>
                     <TableCell>{u._count.records}</TableCell>
@@ -346,7 +346,7 @@ export default function UsersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Batal</Button>
-            <Button onClick={addUser} disabled={adding || !fUsername || fPassword.length < 6} className="bg-green-700 hover:bg-green-800">
+            <Button onClick={addUser} disabled={adding || !fUsername || fPassword.length < 6} className="bg-emerald-600 hover:bg-emerald-700">
               {adding ? 'Menyimpan…' : 'Daftarkan'}
             </Button>
           </DialogFooter>
@@ -398,7 +398,7 @@ export default function UsersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEdit(null)}>Batal</Button>
-            <Button onClick={saveEdit} disabled={saving} className="bg-green-700 hover:bg-green-800">
+            <Button onClick={saveEdit} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
               {saving ? 'Menyimpan…' : 'Simpan'}
             </Button>
           </DialogFooter>
@@ -406,7 +406,7 @@ export default function UsersPage() {
       </Dialog>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-green-700" /> Super Admin: Data Master, Token, Pengaturan &amp; Log, peran akun</span>
+        <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-700" /> Super Admin: Data Master, Token, Pengaturan &amp; Log, peran akun</span>
         <span className="flex items-center gap-1"><ShieldOff className="h-3.5 w-3.5" /> Pengguna: data sesuai ceklis penugasannya</span>
       </div>
     </div>
