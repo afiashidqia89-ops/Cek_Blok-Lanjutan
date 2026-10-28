@@ -22,12 +22,12 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const count = await db.dataRecord.count({ where })
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 via-background to-emerald-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-emerald-950/70 via-background to-emerald-950/60">
       <main className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-lg border-green-100">
+        <Card className="w-full max-w-md shadow-lg border-emerald-500/20">
           <CardHeader className="text-center space-y-2">
             <Image src="/icon-512.png" alt="Cek Blok" width={64} height={64} className="mx-auto rounded-xl" />
-            <CardTitle className="text-xl text-green-800">{exp.name}</CardTitle>
+            <CardTitle className="text-xl text-emerald-200">{exp.name}</CardTitle>
             <CardDescription>Berkas data pemeriksaan blok siap diunduh</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -49,12 +49,12 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
                 <p className="font-medium">{exp.downloads}×</p>
               </div>
             </div>
-            <Button asChild className="w-full h-12 bg-green-700 hover:bg-green-800">
+            <Button asChild className="w-full h-12 bg-emerald-600 hover:bg-emerald-700">
               <a href={`/api/share/${exp.token}`} download>
                 <Download className="h-5 w-5 mr-2" /> Unduh Berkas (.json)
               </a>
             </Button>
-            <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+            <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-3 text-sm text-emerald-100">
               <p className="font-medium mb-1">Cara memasukkan data ke aplikasi Cek Blok:</p>
               <ol className="list-decimal ml-4 space-y-0.5 text-sm">
                 <li>Unduh berkas ini (otomatis masuk ke folder Unduhan/Download).</li>
@@ -64,7 +64,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
               </ol>
             </div>
             <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5 text-green-700" />
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
               Tautan dibuat oleh @{exp.createdBy?.username || 'admin'}
             </p>
           </CardContent>
