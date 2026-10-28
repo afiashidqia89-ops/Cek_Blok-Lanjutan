@@ -69,7 +69,7 @@ function NavLinks(pathname: string, role: Role) {
     if (!items.length) return null
     return (
       <div key={g.judul} className="space-y-1">
-        <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-widest text-green-700/60">
+        <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-widest text-emerald-300/60">
           {g.judul}
         </p>
         {items.map((n) => {
@@ -80,15 +80,24 @@ function NavLinks(pathname: string, role: Role) {
               key={n.href}
               href={n.href}
               className={cn(
-                'group flex min-h-[42px] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                'group flex min-h-[44px] items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-medium transition-all',
                 active
-                  ? 'bg-green-700 text-white shadow-sm shadow-green-700/30'
-                  : 'text-muted-foreground hover:bg-green-100/70 hover:text-green-900'
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-950/60 ring-1 ring-emerald-400/40'
+                  : 'text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-100'
               )}
             >
-              <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-green-700/70 group-hover:text-green-800')} />
+              <span
+                className={cn(
+                  'grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-all',
+                  active
+                    ? 'bg-card/15 text-white'
+                    : 'bg-emerald-500/10 text-emerald-300/80 group-hover:bg-emerald-500/20 group-hover:text-emerald-200'
+                )}
+              >
+                <Icon className="h-[18px] w-[18px]" />
+              </span>
               <span className="flex-1">{n.label}</span>
-              {active && <ChevronRight className="h-3.5 w-3.5 opacity-80" />}
+              {active && <ChevronRight className="h-3.5 w-3.5 opacity-90" />}
             </Link>
           )
         })}
@@ -109,7 +118,7 @@ function BadgeKebun({ user, className }: { user: ShellUser; className?: string }
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800',
+        'inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200',
         className
       )}
       title={`Akun ini ditugaskan ke kebun ${kb} — data dibatasi ke kebun ini`}
@@ -141,8 +150,8 @@ export default function DashboardShell({
   const sidebar = (
     <div className="flex h-full flex-col">
       <nav className="flex-1 space-y-0.5 overflow-y-auto">{NavLinks(pathname, user.role)}</nav>
-      <div className="mt-3 rounded-xl border border-green-100 bg-gradient-to-br from-green-50 to-white p-3">
-        <p className="truncate text-sm font-semibold text-green-900">{user.name}</p>
+      <div className="mt-3 rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/70 to-white p-3">
+        <p className="truncate text-sm font-semibold text-emerald-100">{user.name}</p>
         <p className="truncate text-xs text-muted-foreground">
           @{user.username} · {roleLabel(user.role)}
         </p>
@@ -152,7 +161,7 @@ export default function DashboardShell({
   )
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-green-50/70 via-background to-background">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-emerald-950/60 via-background to-background">
       {/* Topbar */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
@@ -164,22 +173,22 @@ export default function DashboardShell({
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-4">
-              <SheetTitle className="mb-2 flex items-center gap-2 text-green-800">
+              <SheetTitle className="mb-2 flex items-center gap-2 text-emerald-200">
                 <Image src="/icon-512.png" alt="" width={28} height={28} className="rounded-lg" />
                 {siteTitle}
               </SheetTitle>
               <nav className="space-y-0.5" onClick={() => setMenuOpen(false)}>
                 {NavLinks(pathname, user.role)}
               </nav>
-              <div className="mt-3 rounded-xl border border-green-100 bg-green-50 p-3">
-                <p className="truncate text-sm font-semibold text-green-900">{user.name}</p>
+              <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+                <p className="truncate text-sm font-semibold text-emerald-100">{user.name}</p>
                 <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
                 <div className="mt-1.5"><BadgeKebun user={user} /></div>
               </div>
             </SheetContent>
           </Sheet>
 
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-green-800">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-emerald-200">
             <Image src="/icon-512.png" alt="" width={28} height={28} className="rounded-lg hidden sm:block" />
             <span className="truncate max-w-[180px] sm:max-w-none">{siteTitle}</span>
           </Link>
@@ -196,7 +205,7 @@ export default function DashboardShell({
               variant="outline"
               size="sm"
               onClick={logout}
-              className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
             >
               <LogOut className="h-4 w-4 sm:mr-1.5" />
               <span className="hidden sm:inline">Keluar</span>
