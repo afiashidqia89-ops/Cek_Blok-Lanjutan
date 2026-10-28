@@ -275,7 +275,7 @@ function DataMasterIsi() {
           <Button variant="outline" onClick={unduhXlsx}><Download className="h-4 w-4 mr-1.5" /> Unduh Excel</Button>
           <Button variant="outline" onClick={unduhTemplate}><FileSpreadsheet className="h-4 w-4 mr-1.5" /> Template Impor</Button>
           <Button variant="outline" onClick={() => setImpOpen(true)}><Upload className="h-4 w-4 mr-1.5" /> Impor Data (XLSX)</Button>
-          <Button onClick={muatBawaan} disabled={impBusy} className="bg-green-700 hover:bg-green-800">
+          <Button onClick={muatBawaan} disabled={impBusy} className="bg-emerald-600 hover:bg-emerald-700">
             <BookOpen className="h-4 w-4 mr-1.5" /> {impBusy ? 'Memuat…' : 'Muat DB Aresta Bawaan'}
           </Button>
         </div>
@@ -291,18 +291,18 @@ function DataMasterIsi() {
           { l: 'Luas Total (ha)', v: facets ? fmt2(facets.totalLuas) : '…' },
           { l: 'Jumlah Pokok', v: facets ? fmt(facets.totalPokok) : '…' },
         ].map((k) => (
-          <Card key={k.l} className="border-green-100">
+          <Card key={k.l} className="border-emerald-500/20">
             <CardContent className="p-3">
               <p className="text-xs text-muted-foreground">{k.l}</p>
-              <p className="text-lg font-bold text-green-800">{k.v}</p>
+              <p className="text-lg font-bold text-emerald-200">{k.v}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
       {facets?.kosong && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-4 text-sm text-amber-800">
+        <Card className="border-amber-500/30 bg-amber-500/10">
+          <CardContent className="p-4 text-sm text-amber-300">
             <b>Data master masih kosong.</b> Klik <b>Muat DB Aresta Bawaan</b> untuk menyalin database blok
             dari aplikasi (6.041 blok) ke server, atau gunakan <b>Impor Data (XLSX)</b> untuk berkas Excel milik Anda.
           </CardContent>
@@ -345,7 +345,7 @@ function DataMasterIsi() {
       </div>
 
       {/* Tabel */}
-      <Card className="border-green-100">
+      <Card className="border-emerald-500/20">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -372,7 +372,7 @@ function DataMasterIsi() {
                 {rows?.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>{r.estate}</TableCell>
-                    <TableCell><Badge variant="secondary" className="bg-green-50 text-green-800">{r.kebun}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary" className="bg-emerald-500/10 text-emerald-200">{r.kebun}</Badge></TableCell>
                     <TableCell>{r.afdeling}</TableCell>
                     <TableCell className="font-medium">{r.blok}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.luas == null ? '-' : fmt2(r.luas)}</TableCell>
@@ -382,7 +382,7 @@ function DataMasterIsi() {
                         onClick={() => { setEdit(r); setELuas(r.luas == null ? '' : String(Math.round(r.luas * 100) / 100)); setEPokok(r.pokok == null ? '' : String(r.pokok)) }}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" aria-label="Hapus" onClick={() => hapusBlok(r)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" aria-label="Hapus" onClick={() => hapusBlok(r)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -424,7 +424,7 @@ function DataMasterIsi() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEdit(null)}>Batal</Button>
-            <Button onClick={simpanEdit} disabled={saving} className="bg-green-700 hover:bg-green-800">{saving ? 'Menyimpan…' : 'Simpan'}</Button>
+            <Button onClick={simpanEdit} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">{saving ? 'Menyimpan…' : 'Simpan'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -457,7 +457,7 @@ function DataMasterIsi() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setImpOpen(false)}>Batal</Button>
-            <Button onClick={prosesImpor} disabled={impBusy || !impFile} className="bg-green-700 hover:bg-green-800">
+            <Button onClick={prosesImpor} disabled={impBusy || !impFile} className="bg-emerald-600 hover:bg-emerald-700">
               {impBusy ? 'Memproses…' : 'Impor'}
             </Button>
           </DialogFooter>
