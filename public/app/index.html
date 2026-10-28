@@ -906,7 +906,7 @@ if(document.readyState==='complete')done();else window.addEventListener('load',d
           <div class="idhead"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Waktu &amp; Pemeriksa</div>
           <div class="idgrid c2 stack">
             <div class="field"><label for="tanggal">Tanggal Pemeriksaan *</label><input id="tanggal" name="tanggal" type="date" required></div>
-            <div class="field"><label for="pemeriksa">Nama Pemeriksa *</label><input id="pemeriksa" name="pemeriksa" placeholder="Isi nama pemeriksa" required></div>
+            <div class="field"><label for="pemeriksa">Nama Pemeriksa *</label><input id="pemeriksa" name="pemeriksa" placeholder="Terisi otomatis dari akun — boleh diubah" required></div>
           </div>
         </div>
         <div class="idgroup idg-lokasi">
@@ -1180,10 +1180,13 @@ if(document.readyState==='complete')done();else window.addEventListener('load',d
         </div>
       </div>
       <div class="history-data-tools report-box" id="serverSyncBox" aria-label="Sinkronisasi server" style="border-color:#a7f3d0;background:linear-gradient(135deg,#ecfdf5,#fff);flex-direction:column;align-items:stretch">
-        <div class="history-data-tools-copy"><b style="color:#166534">Sinkronisasi Server (Internet)</b><small>Kirim data pemeriksaan HP ke server, dan ambil pembaruan dari server: daftar blok terbaru (data master: estate, kebun, afdeling, blok, luas, pokok) + data transaksi pemeriksaan sesuai penugasan akun Anda (estate / kebun / afdeling). Masuk lewat layar login saat aplikasi dibuka — tanpa perlu file manager.</small></div>
+        <div class="history-data-tools-copy"><b style="color:#166534">Sinkronisasi Server (Internet)</b><small>Kirim data pemeriksaan HP ke server, dan ambil data dari server lewat 2 tombol: <b>Unduh Data Aresta</b> (daftar blok: estate, kebun, afdeling, blok, luas, pokok — sesuai penugasan akun) dan <b>Unduh Data Pemeriksaan</b> (transaksi lingkup akun — pilih rentang tanggal di popup, hasilnya masuk menu Riwayat &amp; Rekap). Masuk lewat layar login saat aplikasi dibuka — tanpa perlu file manager.</small></div>
         <div class="report-actions">
           <button type="button" class="primary" id="srvSendBtn">☁️ Kirim Data ke Server</button>
-          <button type="button" class="secondary" id="srvFetchBtn">⬇️ Download Data Server</button>
+        </div>
+        <div class="report-actions" style="margin-top:8px">
+          <button type="button" class="secondary" id="srvMasterBtn">🗂️ Unduh Data Aresta (Blok)</button>
+          <button type="button" class="secondary" id="srvTransBtn">📋 Unduh Data Pemeriksaan</button>
         </div>
         <small id="srvKebunInfo" style="color:#166534;font-weight:600;padding-left:2px"></small>
         <small id="srvStatus" style="color:#6b7280;padding-left:2px"></small>
@@ -1210,9 +1213,9 @@ if(document.readyState==='complete')done();else window.addEventListener('load',d
           <small style="display:block;margin-top:2px;color:#9ca3af;font-size:10px">Sesi tersimpan otomatis — login cukup sekali. Bila perlu ganti akun, tekan &quot;Keluar akun&quot; di panel Sinkronisasi Server.</small>
         </div>
       </div>
-      <!-- Blok "Data Master Blok (DB Aresta)" dihapus — pembaruan daftar blok
-           kini cukup lewat tombol "⬇️ Download Data Server" di panel
-           Sinkronisasi Server (data master + transaksi lingkup akun). -->
+      <!-- Blok "Data Master Blok (DB Aresta)" dihapus — pembaruan data kini
+           lewat tombol "Unduh Data Aresta" & "Unduh Data Pemeriksaan"
+           di panel Sinkronisasi Server (lingkup akun, pilih tanggal). -->
     </div>
   </section>
 </main>
@@ -1229,6 +1232,21 @@ if(document.readyState==='complete')done();else window.addEventListener('load',d
       <button type="button" class="secondary" id="exportAllDatesBtn">Semua Tanggal</button>
       <button type="button" class="secondary" id="exportDateCancel">Batal</button>
       <button type="button" class="primary" id="exportDateConfirm">Ekspor Periode</button>
+    </div>
+  </section>
+</div>
+<div class="export-date-backdrop" id="srvDlBackdrop" hidden>
+  <section class="export-date-dialog" role="dialog" aria-modal="true" aria-labelledby="srvDlTitle">
+    <div class="export-date-head"><span class="export-date-icon">📋</span><div><h2 id="srvDlTitle">Unduh Data Pemeriksaan</h2><p>Pilih rentang tanggal transaksi yang diunduh dari server (mengikuti lingkup penugasan akun Anda). Hasilnya masuk ke menu Riwayat &amp; Rekap.</p></div></div>
+    <div class="export-date-grid">
+      <label>Tanggal mulai<input type="date" id="srvDlStart"></label>
+      <label>Tanggal akhir<input type="date" id="srvDlEnd"></label>
+    </div>
+    <div class="export-date-info" id="srvDlInfo">Semua tanggal akan diunduh.</div>
+    <div class="export-date-actions">
+      <button type="button" class="secondary" id="srvDlAll">Semua Tanggal</button>
+      <button type="button" class="secondary" id="srvDlCancel">Batal</button>
+      <button type="button" class="primary" id="srvDlConfirm">Unduh</button>
     </div>
   </section>
 </div>
@@ -2046,7 +2064,7 @@ function summaryCards(rows,extra=''){
 }
 function dailyTable(rows){
   if(!rows.length)return '<div class="empty">Belum ada riwayat pada periode ini.</div>';
-  return `<table><thead><tr><th>No</th><th>Kode Transaksi</th><th>Tanggal</th><th>Pemeriksa</th><th>Estate</th><th>Kebun</th><th>Afdeling</th><th>Blok</th><th>Pasar Kanan</th><th>Nomor Baris Kanan</th><th>Pasar Kiri</th><th>Nomor Baris Kiri</th><th>Ancak</th><th>Semak</th><th>Tunasan</th><th>Titi</th><th>Kerdil</th><th>Banjir</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td><code>${escapeHtml(ensureTransactionCode(r,i))}</code></td><td>${escapeHtml(r.tanggal)}</td><td>${escapeHtml(r.pemeriksa)}</td><td>${escapeHtml(r.estate||r.pt||'-')}</td><td>${escapeHtml(r.kebun||'-')}</td><td>${escapeHtml(r.afdeling)}</td><td>${escapeHtml(r.blok)}</td><td>${r.noPasarKanan?'Ya':'-'}</td><td>${escapeHtml(r.noPasarKanan||'-')}</td><td>${r.noPasarKiri?'Ya':'-'}</td><td>${escapeHtml(r.noPasarKiri||'-')}</td><td>${escapeHtml(r.ancak)}${r.ancakStatus?`<div style="font-size:11px;color:#6b7280">${escapeHtml(r.ancakStatus)}</div>`:''}</td><td>${r.semak}</td><td>${r.tunasan}</td><td>${r.titi}</td><td>${r.kerdil}</td><td>${r.banjir}</td><td>${statusBadge(r.status)}<div style="margin-top:5px;font-size:11px;color:#6b7280">${detailItems(r).filter(x=>x.location).length} lokasi | ${detailItems(r).filter(x=>x.photo).length} foto</div></td><td><button class="danger-btn" onclick="removeRecord(${r._index})">Hapus</button></td></tr>`).join('')}</tbody></table>`;
+  return `<table><thead><tr><th>No</th><th>Kode Transaksi</th><th>Tanggal</th><th>Pemeriksa</th><th>Estate</th><th>Kebun</th><th>Afdeling</th><th>Blok</th><th>Baris Kanan</th><th>Nomor Baris Kanan</th><th>Baris Kiri</th><th>Nomor Baris Kiri</th><th>Ancak</th><th>Semak</th><th>Tunasan</th><th>Titi</th><th>Kerdil</th><th>Banjir</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td><code>${escapeHtml(ensureTransactionCode(r,i))}</code></td><td>${escapeHtml(r.tanggal)}</td><td>${escapeHtml(r.pemeriksa)}</td><td>${escapeHtml(r.estate||r.pt||'-')}</td><td>${escapeHtml(r.kebun||'-')}</td><td>${escapeHtml(r.afdeling)}</td><td>${escapeHtml(r.blok)}</td><td>${r.noPasarKanan?'Ya':'-'}</td><td>${escapeHtml(r.noPasarKanan||'-')}</td><td>${r.noPasarKiri?'Ya':'-'}</td><td>${escapeHtml(r.noPasarKiri||'-')}</td><td>${escapeHtml(r.ancak)}${r.ancakStatus?`<div style="font-size:11px;color:#6b7280">${escapeHtml(r.ancakStatus)}</div>`:''}</td><td>${r.semak}</td><td>${r.tunasan}</td><td>${r.titi}</td><td>${r.kerdil}</td><td>${r.banjir}</td><td>${statusBadge(r.status)}<div style="margin-top:5px;font-size:11px;color:#6b7280">${detailItems(r).filter(x=>x.location).length} lokasi | ${detailItems(r).filter(x=>x.photo).length} foto</div></td><td><button class="danger-btn" onclick="removeRecord(${r._index})">Hapus</button></td></tr>`).join('')}</tbody></table>`;
 }
 function groupedRows(rows,key){
   const groups={}; rows.forEach(r=>{const k=String(r[key]||'-');(groups[k]??=[]).push(r)});
@@ -2174,7 +2192,7 @@ function exportLegacyXls(selectedRows){
   });
   const workbook=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
     body{font-family:Calibri,Arial,sans-serif;font-size:11pt} h1{color:#14532d} table{border-collapse:collapse;width:100%} th{background:#14532d;color:white;font-weight:bold} th,td{border:1px solid #a3a3a3;padding:6px;vertical-align:top}.record-head{background:#dcfce7;font-weight:bold}.detail{height:96px}.photo-cell{text-align:center} img{display:block;margin:auto}
-  </style></head><body><h1>Riwayat Pemeriksaan Kondisi Blok</h1><p>Diekspor: ${new Date().toLocaleString('id-ID')}</p><table><thead><tr><th>No</th><th>Kode Transaksi</th><th>Tanggal</th><th>Pemeriksa</th><th>Afdeling</th><th>Blok</th><th>Pasar Kanan</th><th>Nomor Baris Kanan</th><th>Pasar Kiri</th><th>Nomor Baris Kiri</th><th>Ancak</th><th colspan="5">Catatan</th><th>Status</th></tr></thead><tbody>${body}</tbody></table></body></html>`;
+  </style></head><body><h1>Riwayat Pemeriksaan Kondisi Blok</h1><p>Diekspor: ${new Date().toLocaleString('id-ID')}</p><table><thead><tr><th>No</th><th>Kode Transaksi</th><th>Tanggal</th><th>Pemeriksa</th><th>Afdeling</th><th>Blok</th><th>Baris Kanan</th><th>Nomor Baris Kanan</th><th>Baris Kiri</th><th>Nomor Baris Kiri</th><th>Ancak</th><th colspan="5">Catatan</th><th>Status</th></tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob=new Blob(['\ufeff',workbook],{type:'application/vnd.ms-excel;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -2207,7 +2225,7 @@ async function exportExcelWithPhotos(selectedRows){
     const ws1=wb.addWorksheet('Rekap',{views:[{state:'frozen',ySplit:1}]});
     ws1.columns=[
       {header:'No',key:'no',width:6},{header:'Kode Transaksi',key:'kode',width:28},{header:'Tanggal',key:'tgl',width:12},{header:'Pemeriksa',key:'pem',width:20},
-      {header:'Estate',key:'pt',width:8},{header:'Kebun',key:'kebun',width:10},{header:'Afdeling',key:'afd',width:10},{header:'Blok',key:'blok',width:10},{header:'Luas (Ha)',key:'luas',width:10},{header:'Jumlah Pokok',key:'pokok',width:13},{header:'Pasar Kanan',key:'pasarKanan',width:13},{header:'Nomor Baris Kanan',key:'noKanan',width:16},{header:'Pasar Kiri',key:'pasarKiri',width:13},{header:'Nomor Baris Kiri',key:'noKiri',width:16},{header:'Ancak',key:'ancak',width:8},{header:'Kategori Ancak',key:'ancakSt',width:18},
+      {header:'Estate',key:'pt',width:8},{header:'Kebun',key:'kebun',width:10},{header:'Afdeling',key:'afd',width:10},{header:'Blok',key:'blok',width:10},{header:'Luas (Ha)',key:'luas',width:10},{header:'Jumlah Pokok',key:'pokok',width:13},{header:'Baris Kanan',key:'pasarKanan',width:13},{header:'Nomor Baris Kanan',key:'noKanan',width:16},{header:'Baris Kiri',key:'pasarKiri',width:13},{header:'Nomor Baris Kiri',key:'noKiri',width:16},{header:'Ancak',key:'ancak',width:8},{header:'Kategori Ancak',key:'ancakSt',width:18},
       {header:'Semak (Ha)',key:'semak',width:11},{header:'Tunasan (Pkk)',key:'tunasan',width:13},{header:'Titi (Unit)',key:'titi',width:11},
       {header:'Kerdil (Pkk)',key:'kerdil',width:12},{header:'Banjir (Ha)',key:'banjir',width:11},{header:'Jumlah Foto',key:'foto',width:11},
       {header:'Status',key:'status',width:20},{header:'Catatan',key:'cat',width:45}
@@ -2227,7 +2245,7 @@ async function exportExcelWithPhotos(selectedRows){
     const ws2=wb.addWorksheet('Detail Temuan + Foto',{views:[{state:'frozen',ySplit:1}]});
     ws2.columns=[
       {header:'No',key:'no',width:6},{header:'Kode Transaksi',key:'kode',width:28},{header:'Tanggal',key:'tgl',width:12},{header:'Estate',key:'pt',width:8},{header:'Kebun',key:'kebun',width:10},{header:'Afdeling',key:'afd',width:10},{header:'Blok',key:'blok',width:10},
-      {header:'Pasar Kanan',key:'pasarKanan',width:13},{header:'Nomor Baris Kanan',key:'noKanan',width:16},{header:'Pasar Kiri',key:'pasarKiri',width:13},{header:'Nomor Baris Kiri',key:'noKiri',width:16},{header:'Ancak',key:'ancak',width:8},{header:'Kategori Ancak',key:'katAncak',width:18},{header:'Temuan',key:'tem',width:24},{header:'Sampel',key:'sam',width:9},{header:'Nilai',key:'nilai',width:9},
+      {header:'Baris Kanan',key:'pasarKanan',width:13},{header:'Nomor Baris Kanan',key:'noKanan',width:16},{header:'Baris Kiri',key:'pasarKiri',width:13},{header:'Nomor Baris Kiri',key:'noKiri',width:16},{header:'Ancak',key:'ancak',width:8},{header:'Kategori Ancak',key:'katAncak',width:18},{header:'Temuan',key:'tem',width:24},{header:'Sampel',key:'sam',width:9},{header:'Nilai',key:'nilai',width:9},
       {header:'Satuan',key:'sat',width:9},{header:'Latitude',key:'lat',width:13},{header:'Longitude',key:'lng',width:13},{header:'Akurasi (m)',key:'akr',width:11},{header:'Sumber Lokasi',key:'src',width:18},
       {header:'Peta',key:'peta',width:14},{header:'Foto',key:'foto',width:34}
     ];
@@ -3742,16 +3760,17 @@ setView((location.hash||'').slice(1));
 </script>
 <script>
 /* ====== Sinkronisasi Server Cek Blok (patch integrasi web server) ======
-   Versi sederhana: 2 tombol saja.
-   - Kirim Data ke Server : upload transaksi HP (foto ikut, dikompres otomatis)
-   - Download Data Server : perbarui daftar blok (data master) + gabung transaksi
-                            baru sesuai penugasan akun yang terdaftar
-                            (estate / kebun / afdeling)
+   Versi sederhana: kirim 1 tombol, unduh 2 tombol.
+   - Kirim Data ke Server   : upload transaksi HP (foto ikut, dikompres otomatis)
+   - Unduh Data Aresta      : perbarui daftar blok (data master: estate, kebun,
+                              afdeling, blok, luas, pokok) sesuai penugasan akun
+   - Unduh Data Pemeriksaan : transaksi lingkup akun, pilih rentang tanggal lewat
+                              popup, hasilnya digabung ke menu Riwayat & Rekap
    Konfigurasi server & login cukup lewat layar login awal (gate). */
 (function(){
-  var SRV_URL_KEY='cekBlokServerUrl', SRV_TOK_KEY='cekBlokServerToken', SRV_SYNC_KEY='cekBlokServerLastSync', SRV_USER_KEY='cekBlokLoginUser', SRV_KEBUN_KEY='cekBlokKebunUser', SRV_ESTATE_KEY='cekBlokEstateUser', SRV_AFD_KEY='cekBlokAfdelingUser';
+  var SRV_URL_KEY='cekBlokServerUrl', SRV_TOK_KEY='cekBlokServerToken', SRV_SYNC_KEY='cekBlokServerLastSync', SRV_USER_KEY='cekBlokLoginUser', SRV_NAMA_KEY='cekBlokLoginNama', SRV_KEBUN_KEY='cekBlokKebunUser', SRV_ESTATE_KEY='cekBlokEstateUser', SRV_AFD_KEY='cekBlokAfdelingUser';
   function $(id){ return document.getElementById(id); }
-  function cfg(){ var u='',t='',us='',kb='',es='',af=''; try{ u=localStorage.getItem(SRV_URL_KEY)||''; t=localStorage.getItem(SRV_TOK_KEY)||''; us=localStorage.getItem(SRV_USER_KEY)||''; kb=localStorage.getItem(SRV_KEBUN_KEY)||''; es=localStorage.getItem(SRV_ESTATE_KEY)||''; af=localStorage.getItem(SRV_AFD_KEY)||''; }catch(e){} return {u:u,t:t,us:us,kb:kb,es:es,af:af}; }
+  function cfg(){ var u='',t='',us='',nm='',kb='',es='',af=''; try{ u=localStorage.getItem(SRV_URL_KEY)||''; t=localStorage.getItem(SRV_TOK_KEY)||''; us=localStorage.getItem(SRV_USER_KEY)||''; nm=localStorage.getItem(SRV_NAMA_KEY)||''; kb=localStorage.getItem(SRV_KEBUN_KEY)||''; es=localStorage.getItem(SRV_ESTATE_KEY)||''; af=localStorage.getItem(SRV_AFD_KEY)||''; }catch(e){} return {u:u,t:t,us:us,nm:nm,kb:kb,es:es,af:af}; }
   function norm(u){ return String(u||'').trim().replace(/\/+$/,''); }
   function setSt(s){ var el=$('srvStatus'); if(el) el.textContent=s; }
   function tokHeaders(){ var c=cfg(); return { 'Authorization':'Bearer '+c.t, 'Content-Type':'application/json' }; }
@@ -3855,34 +3874,79 @@ setView((location.hash||'').slice(1));
     }finally{ btn.disabled=false; btn.textContent=old; }
   }
 
-  /* ====== DOWNLOAD DATA SERVER ======
-     Satu tombol untuk semuanya: perbarui daftar blok (data master, sesuai
-     kebun akun) + gabungkan transaksi baru dari server. */
-  async function srvFetch(){
-    var c=cfg();
-    if(!c.u||!c.t){ gateShow(); setSt('Masuk dulu lewat layar login untuk mengambil data.'); return; }
-    var btn=$('srvFetchBtn'); btn.disabled=true; var old=btn.textContent; btn.textContent='Mengambil…';
-    var masterRows=null, masterKb='', masterNote='';
-    try{
-      /* --- 1) data master (daftar blok) sesuai kebun akun --- */
-      setSt('Mengambil data master (daftar blok)…');
-      try{
-        var rm=await fetch(norm(c.u)+'/api/sync/master', { headers:tokHeaders() });
-        var jm=await rm.json().catch(function(){ return {}; });
-        if(rm.ok&&jm.ok&&Array.isArray(jm.rows)&&jm.rows.length){ masterRows=jm.rows; masterKb=jm.kebun||'(semua kebun)'; }
-        else if(rm.ok&&jm.ok){ masterNote='Data master di server masih kosong (muat dulu di web: menu Data Master).'; }
-        else masterNote='Gagal ambil data master: '+(jm.error||pesanHttp(rm.status));
-      }catch(em){ masterNote='Gagal ambil data master: '+em.message; }
+  /* ====== UNDUH DATA DARI SERVER (2 tombol) ======
+     1) Unduh Data Aresta      : perbarui daftar blok (data master sesuai penugasan akun)
+     2) Unduh Data Pemeriksaan : transaksi lingkup akun — popup rentang tanggal,
+                                 hasilnya digabung ke menu Riwayat & Rekap. */
 
-      /* --- 2) transaksi baru dari server --- */
-      setSt('Mengambil transaksi dari server…');
+  /* --- popup rentang tanggal (gaya sama dengan dialog Ekspor Excel) --- */
+  function fmtDlInfo(){
+    var a=($('srvDlStart')||{}).value||'', b=($('srvDlEnd')||{}).value||'', info=$('srvDlInfo'); if(!info) return;
+    if(!a&&!b) info.textContent='Semua tanggal akan diunduh.';
+    else if(a&&b) info.textContent='Periode: '+a+' s/d '+b;
+    else if(a) info.textContent='Periode: mulai '+a;
+    else info.textContent='Periode: sampai '+b;
+  }
+  function srvDlClose(){ var b=$('srvDlBackdrop'); if(b) b.hidden=true; document.body.style.overflow=''; }
+  function srvDlOpen(){
+    var c=cfg();
+    if(!c.u||!c.t){ gateShow(); setSt('Masuk dulu lewat layar login untuk mengunduh data.'); return; }
+    var back=$('srvDlBackdrop'); if(!back) return;
+    if(!$('srvDlStart').dataset.wired){
+      $('srvDlStart').dataset.wired='1';
+      $('srvDlAll').addEventListener('click',function(){ $('srvDlStart').value=''; $('srvDlEnd').value=''; fmtDlInfo(); });
+      $('srvDlCancel').addEventListener('click',srvDlClose);
+      $('srvDlConfirm').addEventListener('click',function(){ var a=$('srvDlStart').value||'', b=$('srvDlEnd').value||''; srvDlClose(); srvTrans(a,b); });
+      $('srvDlStart').addEventListener('input',fmtDlInfo);
+      $('srvDlEnd').addEventListener('input',fmtDlInfo);
+      back.addEventListener('click',function(e){ if(e.target===back) srvDlClose(); });
+      document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&back&&!back.hidden) srvDlClose(); });
+      var d=new Date(), awal=new Date(d.getFullYear(),d.getMonth(),1);
+      function pad(n){ return (n<10?'0':'')+n; }
+      $('srvDlStart').value=awal.getFullYear()+'-'+pad(awal.getMonth()+1)+'-'+pad(awal.getDate());
+      $('srvDlEnd').value=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    }
+    fmtDlInfo();
+    back.hidden=false; document.body.style.overflow='hidden';
+  }
+
+  /* --- tombol 1: data aresta (master blok) --- */
+  async function srvMaster(){
+    var c=cfg();
+    if(!c.u||!c.t){ gateShow(); setSt('Masuk dulu lewat layar login untuk mengunduh data.'); return; }
+    var btn=$('srvMasterBtn'); btn.disabled=true; var old=btn.textContent; btn.textContent='Mengambil…';
+    try{
+      setSt('Mengambil data aresta (daftar blok)…');
+      var rm=await fetch(norm(c.u)+'/api/sync/master', { headers:tokHeaders() });
+      var jm=await rm.json().catch(function(){ return {}; });
+      if(!rm.ok||!jm.ok) throw new Error(jm.error||pesanHttp(rm.status));
+      if(!Array.isArray(jm.rows)||!jm.rows.length){ setSt('Data aresta di server masih kosong.'); alert('Data aresta di server masih kosong.\n\nMuat dulu Data Master di web (menu Data Master), lalu unduh lagi di sini.'); return; }
+      if(!window.cekApplyDb){ setSt('Mesin DB aplikasi belum siap — buka ulang halaman lalu ulangi.'); alert('Mesin DB aplikasi belum siap.\n\nTutup dan buka ulang aplikasi, lalu tekan Unduh Data Aresta lagi.'); return; }
+      if(!confirm('Terapkan data aresta dari server?\n\n• Daftar blok: '+jm.rows.length+' blok — lingkup: '+(jm.kebun||'(semua)')+'\n\nDaftar blok di HP akan diperbarui mengikuti server.')){ setSt('Unduh data aresta dibatalkan.'); return; }
+      window.cekApplyDb(jm.rows);
+      setSt('Data aresta terakhir diunduh: '+new Date().toLocaleString('id-ID')+' — '+jm.rows.length+' blok ('+(jm.kebun||'semua')+')');
+      alert('Data aresta berhasil diunduh.\n\nBlok terpasang: '+jm.rows.length+'\nLingkup: '+(jm.kebun||'semua')+'\n\nDaftar blok di menu Periksa kini mengikuti data server.');
+    }catch(err){
+      setSt('Gagal mengambil data aresta: '+err.message);
+      alert('Gagal mengunduh data aresta.\n\nPenyebab: '+err.message+'\n\nPastikan internet aktif. Bila soal login, tekan "Keluar akun" lalu masuk lagi.');
+    }finally{ btn.disabled=false; btn.textContent=old; }
+  }
+
+  /* --- tombol 2: transaksi pemeriksaan (rentang tanggal, masuk Riwayat) --- */
+  async function srvTrans(dariTgl, smpTgl){
+    var c=cfg();
+    if(!c.u||!c.t){ gateShow(); setSt('Masuk dulu lewat layar login untuk mengunduh data.'); return; }
+    var btn=$('srvTransBtn'); btn.disabled=true; var old=btn.textContent; btn.textContent='Mengambil…';
+    try{
       var cur=records();
       var keys=new Set(cur.map(function(r,i){ return trfKey(r,i); }));
       var codes=new Set(cur.map(function(r,i){ return ensureTransactionCode(r,i); }));
-      var toAdd=[], dup=0, cursor=0, totalSrv=0, jagaJeda=0;
+      var toAdd=[], dup=0, cursor=0, totalSrv=0, jagaJeda=0, paramTgl='';
+      if(dariTgl) paramTgl+='&dariTanggal='+encodeURIComponent(dariTgl);
+      if(smpTgl) paramTgl+='&sampaiTanggal='+encodeURIComponent(smpTgl);
       while(true){
         setSt('Mengambil transaksi… ('+cursor+(totalSrv?' dari '+totalSrv:'')+')');
-        var res=await fetch(norm(c.u)+'/api/sync/download?cursor='+cursor+'&dari='+srvLastSync(), { headers:tokHeaders() });
+        var res=await fetch(norm(c.u)+'/api/sync/download?cursor='+cursor+paramTgl, { headers:tokHeaders() });
         var j=await res.json().catch(function(){ return {}; });
         if(!res.ok||!j.ok) throw new Error(j.error||pesanHttp(res.status));
         totalSrv=j.total||0;
@@ -3903,42 +3967,25 @@ setView((location.hash||'').slice(1));
         cursor=j.nextCursor;
         if(++jagaJeda>200) break;
       }
-
-      /* --- 3) konfirmasi sekali, terapkan keduanya --- */
-      if(!masterRows&&!toAdd.length){
-        setSt('Server terkini: tidak ada pembaruan.'+(masterNote?' '+masterNote:''));
-        alert('Tidak ada pembaruan dari server.\n'+(dup?('Duplikat dilewati: '+dup+'\n'):'')+(masterNote?('\n'+masterNote):''));
+      var periode=(dariTgl||smpTgl)?('Periode: '+(dariTgl||'awal')+' s/d '+(smpTgl||'kini')):'Semua tanggal';
+      var lingkup=(c.es||c.kb||c.af)?('Lingkup: '+(c.es?('estate '+c.es):'')+(c.kb?(' kebun '+c.kb):'')+(c.af?(' afdeling '+c.af):'')):'Lingkup: semua data';
+      if(!toAdd.length){
+        setSt('Tidak ada transaksi baru dari server — '+periode.toLowerCase()+'.');
+        alert('Tidak ada transaksi baru untuk digabung.\n\n'+lingkup+'\n'+periode+(dup?('\nDuplikat (sudah ada di HP) dilewati: '+dup):''));
         return;
       }
-      var pesan='Terapkan pembaruan dari server?\n\n';
-      if(masterRows) pesan+='• Daftar blok (data master): '+masterRows.length+' blok — kebun: '+masterKb+'\n';
-      if(toAdd.length) pesan+='• Transaksi baru: '+toAdd.length+' (duplikat dilewati: '+dup+')\n';
-      if(masterNote) pesan+='\nCatatan: '+masterNote;
-      if(!confirm(pesan)) return;
-
-      var ringkas=[];
-      if(masterRows){
-        if(!window.cekApplyDb) masterNote='Mesin DB aplikasi belum siap — daftar blok tidak diperbarui, buka ulang halaman lalu ulangi.';
-        else { window.cekApplyDb(masterRows); ringkas.push('data master: '+masterRows.length+' blok ('+masterKb+')'); }
-      }
-      var merged=cur, jumlahTambah=0;
-      if(toAdd.length){
-        merged=cur.concat(toAdd).map(function(r,i){ return {r:r,i:i}; })
-          .sort(function(a,b){ return String(a.r.tanggal||'').localeCompare(String(b.r.tanggal||'')) || ((a.r.savedAt||0)-(b.r.savedAt||0)) || (a.i-b.i); })
-          .map(function(x){ return x.r; });
-        var ok=await saveRecords(merged);
-        if(!ok) return;
-        jumlahTambah=toAdd.length;
-        ringkas.push('transaksi baru: '+jumlahTambah);
-        renderHistory();
-      }
+      var merged=cur.concat(toAdd).map(function(r,i){ return {r:r,i:i}; })
+        .sort(function(a,b){ return String(a.r.tanggal||'').localeCompare(String(b.r.tanggal||'')) || ((a.r.savedAt||0)-(b.r.savedAt||0)) || (a.i-b.i); })
+        .map(function(x){ return x.r; });
+      var ok=await saveRecords(merged);
+      if(!ok) return;
+      renderHistory();
       try{ localStorage.setItem(SRV_SYNC_KEY, String(Date.now())); }catch(e){}
-      updateKebunInfo();
-      setSt('Terakhir download: '+new Date().toLocaleString('id-ID')+(ringkas.length?' — '+ringkas.join(', '):''));
-      alert('Download dari server selesai.\n\n'+(ringkas.length?('Diterapkan: '+ringkas.join(', ')+'.\n\nTotal transaksi sekarang: '+merged.length+'.'):'Tidak ada perubahan.')+(masterNote?('\n\nCatatan: '+masterNote):''));
+      setSt('Terakhir unduh transaksi: '+new Date().toLocaleString('id-ID')+' — '+toAdd.length+' baru ('+periode.toLowerCase()+')');
+      alert('Unduh data pemeriksaan selesai.\n\n'+lingkup+'\n'+periode+'\n\nTransaksi baru digabung: '+toAdd.length+'\nDuplikat dilewati: '+dup+'\nTotal transaksi sekarang: '+merged.length+'.\n\nBuka menu Riwayat & Rekap untuk melihat datanya.');
     }catch(err){
-      setSt('Gagal mengambil: '+err.message);
-      alert('Gagal mengambil dari server.\n\nPenyebab: '+err.message+'\n\nPastikan internet aktif. Bila soal login, tekan "Keluar akun" lalu masuk lagi.');
+      setSt('Gagal mengambil transaksi: '+err.message);
+      alert('Gagal mengunduh data pemeriksaan.\n\nPenyebab: '+err.message+'\n\nPastikan internet aktif. Bila soal login, tekan "Keluar akun" lalu masuk lagi.');
     }finally{ btn.disabled=false; btn.textContent=old; }
   }
 
@@ -3951,7 +3998,7 @@ setView((location.hash||'').slice(1));
       if(c.kb) ling.push('kebun '+c.kb);
       if(c.af) ling.push('afdeling '+c.af);
       var ket = ling.length ? ('lingkup '+escHtml(ling.join(' / '))) : 'lingkup semua data';
-      el.innerHTML = ('Masuk sebagai <b>'+escHtml(c.us)+'</b> — '+ket+'. Tekan ⬇️ Download Data Server untuk memperbarui daftar blok & data transaksi lingkup Anda.')
+      el.innerHTML = ('Masuk sebagai <b>'+escHtml(c.us)+'</b> — '+ket+'. Tekan 🗂️ Unduh Data Aresta & 📋 Unduh Data Pemeriksaan untuk memperbarui data lingkup Anda.')
         + ' <a href="#" id="srvLogoutLink" style="color:#b91c1c;font-weight:600;text-decoration:underline">Keluar akun</a>';
       var lo=$('srvLogoutLink'); if(lo) lo.addEventListener('click', function(ev){ ev.preventDefault(); appLogout(); });
     }else{
@@ -3959,6 +4006,17 @@ setView((location.hash||'').slice(1));
     }
   }
   function escHtml(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  /* Fix3: nama pemeriksa terisi otomatis dari nama akun yang masuk */
+  function isiPemeriksaDariLogin(){
+    var c=cfg(), p=document.getElementById('pemeriksa');
+    if(!p||!c.nm) return false;
+    if((p.value||'').trim()!==c.nm) p.value=c.nm;
+    try{
+      var x=null; try{ x=JSON.parse(sessionStorage.getItem('cekBlokPetugasAktif')||'null'); }catch(e){}
+      sessionStorage.setItem('cekBlokPetugasAktif',JSON.stringify({tanggal:(x&&x.tanggal)||'',pemeriksa:c.nm}));
+    }catch(e){}
+    return true;
+  }
   /* inti login: dipakai layar login awal (gate) */
   async function doLogin(u,us,pw){
     var res=await fetch(norm(u)+'/api/app/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:us, password:pw, device:perangkat() }) });
@@ -3968,6 +4026,7 @@ setView((location.hash||'').slice(1));
       localStorage.setItem(SRV_URL_KEY, u);
       localStorage.setItem(SRV_TOK_KEY, String(j.token||''));
       localStorage.setItem(SRV_USER_KEY, String((j.user&&j.user.username)||us));
+      localStorage.setItem(SRV_NAMA_KEY, String((j.user&&j.user.name)||''));
       localStorage.setItem(SRV_KEBUN_KEY, String((j.user&&j.user.kebun)||''));
       localStorage.setItem(SRV_ESTATE_KEY, String((j.user&&j.user.estate)||''));
       localStorage.setItem(SRV_AFD_KEY, String((j.user&&j.user.afdeling)||''));
@@ -3975,7 +4034,7 @@ setView((location.hash||'').slice(1));
     return j;
   }
   async function appLogout(){
-    try{ localStorage.removeItem(SRV_TOK_KEY); localStorage.removeItem(SRV_USER_KEY); localStorage.removeItem(SRV_KEBUN_KEY); localStorage.removeItem(SRV_ESTATE_KEY); localStorage.removeItem(SRV_AFD_KEY); }catch(e){}
+    try{ localStorage.removeItem(SRV_TOK_KEY); localStorage.removeItem(SRV_USER_KEY); localStorage.removeItem(SRV_NAMA_KEY); localStorage.removeItem(SRV_KEBUN_KEY); localStorage.removeItem(SRV_ESTATE_KEY); localStorage.removeItem(SRV_AFD_KEY); }catch(e){}
     updateKebunInfo();
     setSt('Keluar. Token dihapus dari perangkat ini.');
     gateShow(); /* setelah keluar, layar login muncul lagi */
@@ -3993,7 +4052,7 @@ setView((location.hash||'').slice(1));
     g.style.display='flex';
   }
   function gateHide(){ var g=$('cekGate'); if(g) g.style.display='none'; }
-  function gateSkip(){ try{ sessionStorage.setItem(GATE_SKIP_KEY,'1'); }catch(e){} gateHide(); setSt('Masuk dilewati — tekan Kirim/Download Data Server untuk masuk kapan saja.'); }
+  function gateSkip(){ try{ sessionStorage.setItem(GATE_SKIP_KEY,'1'); }catch(e){} gateHide(); setSt('Masuk dilewati — tekan Kirim/Unduh Data untuk masuk kapan saja.'); }
   async function gateLogin(){
     var u=($('gateUrlInput').value||'').trim(), us=($('gateUserInput').value||'').trim(), pw=($('gatePassInput').value||'');
     var ge=$('gateErr');
@@ -4006,6 +4065,7 @@ setView((location.hash||'').slice(1));
       try{ sessionStorage.removeItem(GATE_SKIP_KEY); }catch(e){}
       gateHide();
       updateKebunInfo();
+      isiPemeriksaDariLogin();
       var kb=(j.user&&j.user.kebun)?' — Kebun '+j.user.kebun:'';
       setSt('Masuk sebagai '+us+kb+'. Server: '+u);
       /* langsung perbarui daftar blok sesuai kebun akun (senyap, tanpa tombol terpisah) */
@@ -4017,22 +4077,24 @@ setView((location.hash||'').slice(1));
           setSt('Masuk sebagai '+us+kb+'. Daftar blok diperbarui: '+jm.rows.length+' blok ('+(jm.kebun||'semua')+').');
         }
       }catch(em){ /* master gagal → tidak fatal, user bisa tekan Download */ }
-      alert('Berhasil masuk sebagai '+us+kb+'.\n\nSesi tersimpan — Kirim Data ke Server & Download Data Server kini siap dipakai.\nDaftar blok mengikuti kebun akun Anda (tekan ⬇️ Download Data Server setiap admin memperbarui Data Master di web).');
+      alert('Berhasil masuk sebagai '+us+kb+'.\n\nSesi tersimpan — Kirim Data ke Server, Unduh Data Aresta & Unduh Data Pemeriksaan kini siap dipakai.\nDaftar blok mengikuti penugasan akun Anda (tekan 🗂️ Unduh Data Aresta setiap admin memperbarui Data Master di web).\nNama pemeriksa otomatis terisi dari akun ini.');
     }catch(err){
       if(ge) ge.textContent='Gagal masuk: '+err.message;
     }finally{ b.disabled=false; b.textContent=old; }
   }
 
   function init(){
-    if(!$('srvSendBtn')||!$('serverSyncBox')) return setTimeout(init, 300);
+    if(!$('srvSendBtn')||!$('serverSyncBox')||!$('srvMasterBtn')||!$('srvTransBtn')) return setTimeout(init, 300);
     $('srvSendBtn').addEventListener('click', srvSend);
-    $('srvFetchBtn').addEventListener('click', srvFetch);
+    $('srvMasterBtn').addEventListener('click', srvMaster);
+    $('srvTransBtn').addEventListener('click', srvDlOpen);
     /* wire layar login awal (gate) */
     var gl=$('gateLoginBtn'); if(gl) gl.addEventListener('click', gateLogin);
     var gs=$('gateSkipBtn'); if(gs) gs.addEventListener('click', gateSkip);
     var c=cfg();
     if(c.us&&c.t) setSt('Masuk sebagai '+c.us+(c.kb?' (kebun '+c.kb+')':'')+'. Server: '+c.u); else if(c.u) setSt('Server: '+c.u);
     updateKebunInfo();
+    isiPemeriksaDariLogin();
     /* tampilkan gate saat pertama dibuka bila belum pernah masuk & belum dilewati */
     var skip=false; try{ skip=sessionStorage.getItem(GATE_SKIP_KEY)==='1'; }catch(e){}
     if(!(c.us&&c.t)&&!skip) setTimeout(gateShow, 600);
