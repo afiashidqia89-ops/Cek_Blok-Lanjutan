@@ -106,16 +106,16 @@ function TokensIsi() {
             Kunci koneksi antara aplikasi Cek Blok di HP dan server ini.
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-green-700 hover:bg-green-800">
+        <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">
           <Plus className="h-4 w-4 mr-1.5" /> Buat Token
         </Button>
       </div>
 
-      <Card className="border-green-100 bg-green-50/60">
+      <Card className="border-emerald-500/20 bg-emerald-500/10">
         <CardContent className="p-4 flex gap-3 text-sm">
-          <KeyRound className="h-5 w-5 text-green-700 shrink-0 mt-0.5" />
+          <KeyRound className="h-5 w-5 text-emerald-300 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-medium text-green-900">Cara memakai di aplikasi Cek Blok:</p>
+            <p className="font-medium text-emerald-100">Cara memakai di aplikasi Cek Blok:</p>
             <ol className="list-decimal ml-4 text-muted-foreground space-y-0.5">
               <li>Buat token di sini, lalu salin (cbk_…).</li>
               <li>Buka aplikasi Cek Blok (APK atau di <code>/app/</code>), masuk menu <b>Riwayat → Transfer Data Antar HP</b>.</li>
@@ -126,7 +126,7 @@ function TokensIsi() {
         </CardContent>
       </Card>
 
-      <Card className="border-green-100">
+      <Card className="border-emerald-500/20">
         <CardContent className="p-0">
           <div className="flex items-center justify-between px-4 py-2.5 border-b">
             <p className="text-sm font-medium">{all ? 'Semua token (admin)' : 'Token milik saya'}</p>
@@ -178,7 +178,7 @@ function TokensIsi() {
                       {new Date(t.createdAt).toLocaleDateString('id-ID')}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" aria-label="Cabut" onClick={() => revoke(t)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" aria-label="Cabut" onClick={() => revoke(t)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -205,11 +205,11 @@ function TokensIsi() {
           </DialogHeader>
           {newToken ? (
             <div className="space-y-3">
-              <div className="rounded-md border bg-green-50 p-3">
-                <p className="text-sm font-medium text-green-900 mb-1">Token berhasil dibuat!</p>
+              <div className="rounded-md border bg-emerald-500/10 p-3">
+                <p className="text-sm font-medium text-emerald-100 mb-1">Token berhasil dibuat!</p>
                 <code className="text-xs break-all">{newToken}</code>
               </div>
-              <Button className="w-full bg-green-700 hover:bg-green-800"
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700"
                 onClick={() => { navigator.clipboard.writeText(newToken); toast.success('Token disalin') }}>
                 <Copy className="h-4 w-4 mr-1.5" /> Salin Token
               </Button>
@@ -238,7 +238,7 @@ function TokensIsi() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-                <Button onClick={create} disabled={creating || !label.trim()} className="bg-green-700 hover:bg-green-800">
+                <Button onClick={create} disabled={creating || !label.trim()} className="bg-emerald-600 hover:bg-emerald-700">
                   {creating ? 'Membuat…' : 'Buat Token'}
                 </Button>
               </DialogFooter>
