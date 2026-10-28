@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Pemeriksaan Kondisi Blok</title>
   <meta name="theme-color" content="#166534">
-<meta name="cek-blok-build" content="2026-10-27-v35-sync-sederhana">
+<meta name="cek-blok-build" content="2026-10-28-v37-foto-utuh">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Cek Blok">
@@ -897,7 +897,7 @@ if(document.readyState==='complete')done();else window.addEventListener('load',d
   <button type="button" data-nav="riwayat" aria-label="Riwayat"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span class="t">Riwayat</span></button>
   <button type="button" data-nav="report" aria-label="Data Report"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5 12 4l8 3.5-8 3.5z"/><path d="m4 12 8 3.5 8-3.5"/><path d="m4 16.5 8 3.5 8-3.5"/></svg></span><span class="t">Data Report</span></button>
 </nav>
-<main><section class="home-dashboard" id="homeDashboard"><div class="home-shell"><div class="home-hero"><div class="home-copy"><span class="home-kicker">🌿 CEK BLOK • SIAP OFFLINE</span><h2>Selamat Datang</h2><p>Pilih aktivitas untuk memulai pemeriksaan, melihat peta blok, atau membuka rekap data lapangan.</p></div></div><h2 class="home-menu-title">Menu Utama</h2><div class="home-menu-grid"><button type="button" class="home-menu-card" data-go="periksa"><span class="home-icon">📝</span><b>Pemeriksaan Blok</b><small>Catat kondisi, GPS, foto, dan temuan lapangan.</small><span class="home-arrow">›</span></button><button type="button" class="home-menu-card" data-go="peta"><span class="home-icon">🗺️</span><b>Peta Blok Offline</b><small>Buka peta, lacak GPS, dan lihat sebaran temuan.</small><span class="home-arrow">›</span></button><button type="button" class="home-menu-card" data-go="riwayat"><span class="home-icon">📊</span><b>Riwayat & Rekap</b><small>Lihat hasil pemeriksaan dan ekspor laporan.</small><span class="home-arrow">›</span></button><button type="button" class="home-menu-card" data-go="report"><span class="home-icon">🗂️</span><b>Data Report</b><small>Perbarui DB Aresta, ekspor Excel + foto.</small><span class="home-arrow">›</span></button></div><div class="created-by">Created By Iqbal</div></div></section><button type="button" class="home-back" id="homeBack" aria-label="Kembali"><span class="home-back-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M10.5 5 4 11.5 10.5 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 11.5h9.25c3.18 0 5.75 2.57 5.75 5.75V19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Kembali</span></button>
+<main><section class="home-dashboard" id="homeDashboard"><div class="home-shell"><div class="home-hero"><div class="home-copy"><span class="home-kicker">🌿 CEK BLOK • SIAP OFFLINE</span><h2>Selamat Datang</h2><p>Pilih aktivitas untuk memulai pemeriksaan, melihat peta blok, atau membuka rekap data lapangan.</p></div></div><h2 class="home-menu-title">Menu Utama</h2><div class="home-menu-grid"><button type="button" class="home-menu-card" data-go="periksa"><span class="home-icon">📝</span><b>Pemeriksaan Blok</b><small>Catat kondisi, GPS, foto, dan temuan lapangan.</small><span class="home-arrow">›</span></button><button type="button" class="home-menu-card" data-go="peta"><span class="home-icon">🗺️</span><b>Peta Blok Offline</b><small>Buka peta, lacak GPS, dan lihat sebaran temuan.</small><span class="home-arrow">›</span></button><button type="button" class="home-menu-card" data-go="riwayat"><span class="home-icon">📊</span><b>Riwayat & Rekap</b><small>Lihat hasil pemeriksaan dan ekspor laporan.</small><span class="home-arrow">›</span></button><button type="button" class="home-menu-card" data-go="report"><span class="home-icon">🗂️</span><b>Data Report</b><small>Sinkronisasi server, ekspor Excel + foto.</small><span class="home-arrow">›</span></button></div><div class="created-by">Created By Iqbal</div></div></section><button type="button" class="home-back" id="homeBack" aria-label="Kembali"><span class="home-back-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M10.5 5 4 11.5 10.5 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 11.5h9.25c3.18 0 5.75 2.57 5.75 5.75V19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Kembali</span></button>
   <form id="inspectionForm">
     <section class="card card-info">
       <div class="card-title">INFORMASI PEMERIKSAAN</div>
@@ -1180,7 +1180,7 @@ if(document.readyState==='complete')done();else window.addEventListener('load',d
         </div>
       </div>
       <div class="history-data-tools report-box" id="serverSyncBox" aria-label="Sinkronisasi server" style="border-color:#a7f3d0;background:linear-gradient(135deg,#ecfdf5,#fff);flex-direction:column;align-items:stretch">
-        <div class="history-data-tools-copy"><b style="color:#166534">Sinkronisasi Server (Internet)</b><small>Kirim data pemeriksaan HP ke server, dan ambil pembaruan dari server: daftar blok terbaru (data master) + transaksi baru sesuai kebun akun Anda. Masuk lewat layar login saat aplikasi dibuka — tanpa perlu file manager.</small></div>
+        <div class="history-data-tools-copy"><b style="color:#166534">Sinkronisasi Server (Internet)</b><small>Kirim data pemeriksaan HP ke server, dan ambil pembaruan dari server: daftar blok terbaru (data master: estate, kebun, afdeling, blok, luas, pokok) + data transaksi pemeriksaan sesuai penugasan akun Anda (estate / kebun / afdeling). Masuk lewat layar login saat aplikasi dibuka — tanpa perlu file manager.</small></div>
         <div class="report-actions">
           <button type="button" class="primary" id="srvSendBtn">☁️ Kirim Data ke Server</button>
           <button type="button" class="secondary" id="srvFetchBtn">⬇️ Download Data Server</button>
@@ -1210,14 +1210,9 @@ if(document.readyState==='complete')done();else window.addEventListener('load',d
           <small style="display:block;margin-top:2px;color:#9ca3af;font-size:10px">Sesi tersimpan otomatis — login cukup sekali. Bila perlu ganti akun, tekan &quot;Keluar akun&quot; di panel Sinkronisasi Server.</small>
         </div>
       </div>
-      <div class="history-data-tools db-tools report-box" aria-label="Pembaruan DB Aresta" style="border-color:#bbf7d0;background:linear-gradient(135deg,#f0fdf4,#fff);flex-direction:column;align-items:stretch">
-        <div class="history-data-tools-copy"><b style="color:#14532d">Data Master Blok (DB Aresta)</b><small id="dbArestaStatus"></small><small>Perbarui dari file Excel (.xlsx) dengan kolom: Estate, Kebun, Afdeling, Blok, Luas (Ha), Jumlah Pokok. Riwayat pemeriksaan tidak berubah.</small></div>
-        <div class="report-actions">
-          <label class="peta-file" for="dbArestaFile">📥 Perbarui DB Aresta (Excel)</label><input id="dbArestaFile" type="file" hidden>
-          <button type="button" class="secondary" id="dbArestaExport">⬇️ Unduh DB saat ini</button>
-          <button type="button" class="secondary" id="dbArestaReset" hidden>↩️ Kembalikan DB bawaan</button>
-        </div>
-      </div>
+      <!-- Blok "Data Master Blok (DB Aresta)" dihapus — pembaruan daftar blok
+           kini cukup lewat tombol "⬇️ Download Data Server" di panel
+           Sinkronisasi Server (data master + transaksi lingkup akun). -->
     </div>
   </section>
 </main>
@@ -3750,12 +3745,13 @@ setView((location.hash||'').slice(1));
    Versi sederhana: 2 tombol saja.
    - Kirim Data ke Server : upload transaksi HP (foto ikut, dikompres otomatis)
    - Download Data Server : perbarui daftar blok (data master) + gabung transaksi
-                            baru sesuai lingkup kebun akun yang terdaftar
+                            baru sesuai penugasan akun yang terdaftar
+                            (estate / kebun / afdeling)
    Konfigurasi server & login cukup lewat layar login awal (gate). */
 (function(){
-  var SRV_URL_KEY='cekBlokServerUrl', SRV_TOK_KEY='cekBlokServerToken', SRV_SYNC_KEY='cekBlokServerLastSync', SRV_USER_KEY='cekBlokLoginUser', SRV_KEBUN_KEY='cekBlokKebunUser';
+  var SRV_URL_KEY='cekBlokServerUrl', SRV_TOK_KEY='cekBlokServerToken', SRV_SYNC_KEY='cekBlokServerLastSync', SRV_USER_KEY='cekBlokLoginUser', SRV_KEBUN_KEY='cekBlokKebunUser', SRV_ESTATE_KEY='cekBlokEstateUser', SRV_AFD_KEY='cekBlokAfdelingUser';
   function $(id){ return document.getElementById(id); }
-  function cfg(){ var u='',t='',us='',kb=''; try{ u=localStorage.getItem(SRV_URL_KEY)||''; t=localStorage.getItem(SRV_TOK_KEY)||''; us=localStorage.getItem(SRV_USER_KEY)||''; kb=localStorage.getItem(SRV_KEBUN_KEY)||''; }catch(e){} return {u:u,t:t,us:us,kb:kb}; }
+  function cfg(){ var u='',t='',us='',kb='',es='',af=''; try{ u=localStorage.getItem(SRV_URL_KEY)||''; t=localStorage.getItem(SRV_TOK_KEY)||''; us=localStorage.getItem(SRV_USER_KEY)||''; kb=localStorage.getItem(SRV_KEBUN_KEY)||''; es=localStorage.getItem(SRV_ESTATE_KEY)||''; af=localStorage.getItem(SRV_AFD_KEY)||''; }catch(e){} return {u:u,t:t,us:us,kb:kb,es:es,af:af}; }
   function norm(u){ return String(u||'').trim().replace(/\/+$/,''); }
   function setSt(s){ var el=$('srvStatus'); if(el) el.textContent=s; }
   function tokHeaders(){ var c=cfg(); return { 'Authorization':'Bearer '+c.t, 'Content-Type':'application/json' }; }
@@ -3821,25 +3817,38 @@ setView((location.hash||'').slice(1));
     try{
       var rows=await prepRows(records().slice(), function(i,n){ setSt('Mengompres foto transaksi '+(i+1)+' dari '+n+'…'); });
       phCache=null;
-      var CH=3*1024*1024, groups=[], cur=[], sz=0;
-      rows.forEach(function(r){ var s=JSON.stringify(r); if(cur.length&&sz+s.length>CH){ groups.push(cur); cur=[]; sz=0; } cur.push(r); sz+=s.length; });
-      if(cur.length) groups.push(cur);
-      var terima=0, baru=0, dup=0, tanpaFoto=false;
-      for(var i=0;i<groups.length;i++){
-        setSt('Mengirim bagian '+(i+1)+' dari '+groups.length+'…');
-        var payload={ app:'cekblok-transfer', v:1, perangkat:perangkat(), dibuat:Date.now(), foto:!tanpaFoto, bagian:i+1, dari:groups.length, jumlah:groups[i].length, records: tanpaFoto?groups[i].map(stripPhoto):groups[i] };
+      var CH=3*1024*1024, antrian=[], cur=[], sz=0;
+      rows.forEach(function(r){ var s=JSON.stringify(r); if(cur.length&&sz+s.length>CH){ antrian.push(cur); cur=[]; sz=0; } cur.push(r); sz+=s.length; });
+      if(cur.length) antrian.push(cur);
+      var terima=0, baru=0, dup=0, diperbarui=0, tanpaFotoN=0;
+      while(antrian.length){
+        var g=antrian.shift();
+        setSt('Mengirim… sisa '+antrian.length+' bagian'+(tanpaFotoN?(' — '+tanpaFotoN+' transaksi tanpa foto'):''));
+        var payload={ app:'cekblok-transfer', v:1, perangkat:perangkat(), dibuat:Date.now(), foto:true, bagian:1, dari:1, jumlah:g.length, records:g };
         var res=await fetch(norm(c.u)+'/api/sync/upload', { method:'POST', headers:tokHeaders(), body:JSON.stringify(payload) });
-        var j=await res.json().catch(function(){ return {}; });
-        if((!res.ok||!j.ok)&&res.status===413&&!tanpaFoto){
-          tanpaFoto=true; i=-1; terima=0; baru=0; dup=0;   /* ulang semua tanpa foto */
+        if(res.status===413&&g.length>1){
+          /* Kebesaran -> PECAH jadi dua, foto TETAP ikut (dulu: semua foto dibuang) */
+          var mid=Math.ceil(g.length/2);
+          antrian.unshift(g.slice(0,mid)); antrian.unshift(g.slice(mid));
           continue;
         }
+        if(res.status===413&&g.length===1){
+          /* Satu transaksi memang terlalu besar (banyak foto) -> HANYA transaksi
+             ini yang dikirim tanpa foto; transaksi lain tetap dengan foto. */
+          tanpaFotoN+=1;
+          payload.records=g.map(stripPhoto); payload.foto=false;
+          res=await fetch(norm(c.u)+'/api/sync/upload', { method:'POST', headers:tokHeaders(), body:JSON.stringify(payload) });
+        }
+        var j=await res.json().catch(function(){ return {}; });
         if(!res.ok||!j.ok) throw new Error(j.error||pesanHttp(res.status));
-        terima+=j.diterima||0; baru+=j.baru||0; dup+=j.duplikat||0;
+        terima+=j.diterima||0; baru+=j.baru||0; dup+=j.duplikat||0; diperbarui+=j.diperbarui||0;
       }
       try{ localStorage.setItem(SRV_SYNC_KEY, String(Date.now())); }catch(e){}
-      setSt('Terakhir dikirim: '+new Date().toLocaleString('id-ID')+(tanpaFoto?' (tanpa foto)':' (dengan foto)'));
-      alert('Kirim ke server selesai.\n\nTransaksi diperiksa: '+terima+'\nBaru tersimpan: '+baru+'\nDuplikat dilewati: '+dup+(tanpaFoto?'\n\nCatatan: data dikirim tanpa foto karena ukuran melebihi batas.':'\n\nFoto temuan ikut dikirim (otomatis dikompres agar hemat kuota).'));
+      setSt('Terakhir dikirim: '+new Date().toLocaleString('id-ID')+(tanpaFotoN?(' ('+tanpaFotoN+' transaksi tanpa foto)'):' (dengan foto)'));
+      alert('Kirim ke server selesai.\n\nTransaksi diperiksa: '+terima+'\nBaru tersimpan: '+baru+'\nDiperbarui isinya: '+diperbarui+'\nDuplikat (sama persis) dilewati: '+dup
+        +(tanpaFotoN
+          ?('\n\nCatatan: '+tanpaFotoN+' transaksi terlalu besar untuk sekali kirim sehingga fotonya tidak ikut — kurangi jumlah foto pada transaksi itu lalu kirim lagi.')
+          :'\n\nFoto temuan ikut dikirim (otomatis dikompres agar hemat kuota). Kirim ulang transaksi lama bila fotonya dulu gagal masuk — isinya akan diperbarui, bukan diduplikasi.'));
     }catch(err){
       setSt('Gagal mengirim: '+err.message);
       alert('Gagal mengirim ke server.\n\nPenyebab: '+err.message+'\n\nPastikan internet aktif. Bila soal login, tekan "Keluar akun" lalu masuk lagi.');
@@ -3937,8 +3946,12 @@ setView((location.hash||'').slice(1));
   function updateKebunInfo(){
     var c=cfg(), el=$('srvKebunInfo'); if(!el) return;
     if(c.us&&c.t){
-      el.innerHTML = (c.kb ? ('Masuk sebagai <b>'+escHtml(c.us)+'</b> — kebun '+escHtml(c.kb)+'. Tekan ⬇️ Download Data Server untuk memperbarui daftar blok & data.')
-                           : ('Masuk sebagai <b>'+escHtml(c.us)+'</b> — lingkup semua kebun.'))
+      var ling=[];
+      if(c.es) ling.push('estate '+c.es);
+      if(c.kb) ling.push('kebun '+c.kb);
+      if(c.af) ling.push('afdeling '+c.af);
+      var ket = ling.length ? ('lingkup '+escHtml(ling.join(' / '))) : 'lingkup semua data';
+      el.innerHTML = ('Masuk sebagai <b>'+escHtml(c.us)+'</b> — '+ket+'. Tekan ⬇️ Download Data Server untuk memperbarui daftar blok & data transaksi lingkup Anda.')
         + ' <a href="#" id="srvLogoutLink" style="color:#b91c1c;font-weight:600;text-decoration:underline">Keluar akun</a>';
       var lo=$('srvLogoutLink'); if(lo) lo.addEventListener('click', function(ev){ ev.preventDefault(); appLogout(); });
     }else{
@@ -3956,11 +3969,13 @@ setView((location.hash||'').slice(1));
       localStorage.setItem(SRV_TOK_KEY, String(j.token||''));
       localStorage.setItem(SRV_USER_KEY, String((j.user&&j.user.username)||us));
       localStorage.setItem(SRV_KEBUN_KEY, String((j.user&&j.user.kebun)||''));
+      localStorage.setItem(SRV_ESTATE_KEY, String((j.user&&j.user.estate)||''));
+      localStorage.setItem(SRV_AFD_KEY, String((j.user&&j.user.afdeling)||''));
     }catch(e){}
     return j;
   }
   async function appLogout(){
-    try{ localStorage.removeItem(SRV_TOK_KEY); localStorage.removeItem(SRV_USER_KEY); localStorage.removeItem(SRV_KEBUN_KEY); }catch(e){}
+    try{ localStorage.removeItem(SRV_TOK_KEY); localStorage.removeItem(SRV_USER_KEY); localStorage.removeItem(SRV_KEBUN_KEY); localStorage.removeItem(SRV_ESTATE_KEY); localStorage.removeItem(SRV_AFD_KEY); }catch(e){}
     updateKebunInfo();
     setSt('Keluar. Token dihapus dari perangkat ini.');
     gateShow(); /* setelah keluar, layar login muncul lagi */
