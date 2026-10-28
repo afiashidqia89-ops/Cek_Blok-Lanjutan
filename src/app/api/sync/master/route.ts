@@ -1,4 +1,4 @@
-import { corsJson, corsOptions } from '@/lib/api'
+import { corsJson, corsOptions, scopeUser } from '@/lib/api'
 import { authDevice } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { logAudit } from '@/lib/log'
@@ -13,30 +13,32 @@ export async function OPTIONS() {
  * AMBIL DATA MASTER (blok) dari server ke aplikasi HP.
  * Authorization: Bearer <token perangkat> (atau token dari Login akun web).
  *
- * Data yang dikirim mengikuti kebun user:
- *  - user.kebun terisi  -> hanya blok kebun tersebut (daftar pilih blok di HP
- *                          otomatis sesuai kebun tempat user didaftarkan)
- *  - user.kebun kosong  -> semua blok (semua kebun), biasanya admin
+ * Data yang dikirim mengikuti PENUGASAN user (estate + kebun + afdeling,
+ * bisa lebih dari satu dipisah koma — semua disaring bersamaan):
+ *  - user budi didaftarkan estate KSA1G, kebun KSA1, afdeling 1
+ *    -> hanya blok KSA1G / KSA1 / afdeling 1 yang dikirim ke HP-nya
+ *  - admin/super-admin (tanpa penugasan) -> semua blok
  *
  * Format rows = [[estate,kebun,afdeling,blok,luas,pokok],...] — persis format
  * DB Aresta aplikasi, langsung diterapkan ke daftar blok di HP.
  *
  * Alur update: admin memperbarui Data Master di web -> HP menekan
- * "Ambil Data Master" -> daftar blok di HP ikut terbaru.
+ * "Download Data Server" -> daftar blok + transaksi lingkupnya ikut terbaru.
  */
 export async function GET(req: Request) {
   const tk = await authDevice(req)
   if (!tk) return corsJson({ ok: false, error: 'Token perangkat tidak valid' }, 401)
 
-  // lingkup ceklis: daftar kebun (atau estate) dipisah koma
-  const split = (v?: string | null) => String(v || '').split(',').map((x) => x.trim()).filter(Boolean)
-  const kbs = split(tk.user.kebun)
-  const ests = split((tk.user as unknown as { estate?: string }).estate)
-  const whereBlok: Record<string, unknown> = kbs.length
-    ? { kebun: { in: kbs } }
-    : ests.length
-      ? { estate: { in: ests } }
-      : {}
+  // Lingkup PENUGASAN user: estate, kebun, afdeling (semuanya disaring AND —
+  // persis seperti data transaksi di /api/sync/download supaya master dan
+  // transaksi yang masuk ke HP selalu satu wilayah yang sama).
+  // Catatan: scopeUser mengembalikan array kosong untuk ADMIN/SUPERADMIN,
+  // jadi admin otomatis menerima semua blok.
+  const sc = scopeUser(tk.user as never)
+  const whereBlok: Record<string, unknown> = {}
+  if (sc.kebun.length) whereBlok.kebun = { in: sc.kebun }
+  if (sc.estate.length) whereBlok.estate = { in: sc.estate }
+  if (sc.afdeling.length) whereBlok.afdeling = { in: sc.afdeling }
   const rows = await db.blokMaster.findMany({
     where: whereBlok,
     orderBy: [{ kebun: 'asc' }, { afdeling: 'asc' }, { blok: 'asc' }],
@@ -50,16 +52,22 @@ export async function GET(req: Request) {
   }
   if (!versi) versi = Date.now()
 
+  const labelLingkup = [
+    sc.estate.length ? 'estate ' + sc.estate.join(',') : '',
+    sc.kebun.length ? 'kebun ' + sc.kebun.join(',') : '',
+    sc.afdeling.length ? 'afdeling ' + sc.afdeling.join(',') : '',
+  ].filter(Boolean).join(' / ')
+
   await logAudit(
     { uid: tk.userId, username: tk.user.username },
     'SYNC_MASTER',
-    `${rows.length} blok (lingkup: ${kbs.length ? kbs.join(',') : ests.length ? 'estate ' + ests.join(',') : 'semua'})`
+    `${rows.length} blok (lingkup: ${labelLingkup || 'semua'})`
   )
 
   return corsJson({
     ok: true,
-    kebun: kbs.join(', '),
-    lingkup: kbs.length ? 'KEBUN' : ests.length ? 'ESTATE' : 'SEMUA',
+    kebun: labelLingkup || '(semua kebun)',
+    lingkup: sc.kebun.length ? 'KEBUN' : sc.estate.length ? 'ESTATE' : 'SEMUA',
     total: rows.length,
     versi,
     diperbarui: versi,
