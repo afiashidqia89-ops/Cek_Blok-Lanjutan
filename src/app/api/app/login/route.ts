@@ -12,12 +12,12 @@ export async function OPTIONS() {
 /**
  * Login aplikasi HP (Cek Blok) memakai akun user yang didaftarkan di web.
  * Body: {username, password, device?}
- * Respons: {ok, user:{username,name,role,kebun}, token}
+ * Respons: {ok, user:{username,name,role,estate,kebun,afdeling}, token}
  * Token = token perangkat (cbk_...) milik user tsb — dipakai otomatis oleh
  * aplikasi untuk Kirim/Ambil dari Server. Token dipakai ulang bila sudah ada,
  * jadi daftar Token Perangkat tidak menumpuk; admin tetap bisa mencabutnya.
- * user.kebun = kebun tempat user ditugaskan — aplikasi HP memakainya untuk
- * membatasi daftar blok (Ambil Data Master) & data transaksi yang diterima.
+ * user.estate/kebun/afdeling = penugasan user — aplikasi HP memakainya untuk
+ * membatasi daftar blok (Download Data Server) & data transaksi yang diterima.
  * Dibatasi 5 percobaan gagal / menit / username (memori server).
  */
 const attempts = new Map<string, { n: number; until: number }>()
@@ -89,7 +89,14 @@ export async function POST(req: Request) {
 
   return corsJson({
     ok: true,
-    user: { username: user.username, name: user.name, role: user.role, kebun: user.kebun || '' },
+    user: {
+      username: user.username,
+      name: user.name,
+      role: user.role,
+      estate: user.estate || '',
+      kebun: user.kebun || '',
+      afdeling: user.afdeling || '',
+    },
     token: tokenRow.token,
     serverTime: Date.now(),
   })
