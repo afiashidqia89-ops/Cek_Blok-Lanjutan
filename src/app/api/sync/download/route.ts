@@ -18,6 +18,8 @@ export async function OPTIONS() {
  *  - dari=<epochMs>  : hanya data yang masuk ke server setelah waktu ts (sinkron inkremental)
  *  - cursor=<int>    : offset untuk pengambilan bertahap (hemat kuota & ukuran respons)
  *  - maxBytes=<int>  : batas ukuran per batch (default 3 MB)
+ *  - dariTanggal=<YYYY-MM-DD>   : batas bawah tanggal pemeriksaan (opsional)
+ *  - sampaiTanggal=<YYYY-MM-DD> : batas atas tanggal pemeriksaan (opsional)
  * Respons: {ok, records:[...], nextCursor, selesai, total}
  * Format records = persis berkas transfer aplikasi, langsung digabung tanpa file manager.
  * Bila user ditugaskan di kebun tertentu (lihat menu Pengguna di web), hanya
@@ -37,7 +39,14 @@ export async function GET(req: Request) {
   const maxBytes = Math.min(4_000_000, Math.max(200_000, Number(sp.get('maxBytes') || 3_000_000)))
   const hardLimit = 500
 
+  // Rentang tanggal pemeriksaan (kolom tanggal berformat YYYY-MM-DD, aman dibanding string)
+  const iso = /^\d{4}-\d{2}-\d{2}$/
+  const dariTanggal = String(sp.get('dariTanggal') || '').trim()
+  const sampaiTanggal = String(sp.get('sampaiTanggal') || '').trim()
+
   const f: RecordFilter = { dariMs }
+  if (iso.test(dariTanggal)) f.tanggalFrom = dariTanggal
+  if (iso.test(sampaiTanggal)) f.tanggalTo = sampaiTanggal
   const where = recordWhere(f)
 
   // Pengguna yang ditugaskan (ceklis kebun/estate) hanya menerima transaksi lingkupnya
@@ -72,7 +81,7 @@ export async function GET(req: Request) {
     await logAudit(
       { uid: tk.userId, username: tk.user.username },
       'SYNC_DOWNLOAD',
-      `${count} transaksi (cursor ${nextCursor}/${total})${scoped ? ' — lingkup penugasan' : ''}`
+      `${count} transaksi (cursor ${nextCursor}/${total})${scoped ? ' — lingkup penugasan' : ''}${f.tanggalFrom || f.tanggalTo ? ` — periode ${f.tanggalFrom || '…'} s/d ${f.tanggalTo || '…'}` : ''}`
     )
   }
 
