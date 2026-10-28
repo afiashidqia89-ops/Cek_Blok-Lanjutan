@@ -48,9 +48,9 @@ interface Facets { kebun: string[]; afdeling: string[]; blok: string[]; pemeriks
 
 function statusColor(s: string): string {
   const v = (s || '').toLowerCase()
-  if (v.includes('kritis') || v.includes('buruk')) return 'bg-red-100 text-red-800'
-  if (v.includes('perhatian') || v.includes('waspada') || v.includes('sedang')) return 'bg-amber-100 text-amber-800'
-  if (v) return 'bg-green-100 text-green-800'
+  if (v.includes('kritis') || v.includes('buruk')) return 'bg-red-500/15 text-red-300'
+  if (v.includes('perhatian') || v.includes('waspada') || v.includes('sedang')) return 'bg-amber-500/15 text-amber-300'
+  if (v) return 'bg-emerald-500/15 text-emerald-200'
   return 'bg-muted text-muted-foreground'
 }
 
@@ -217,7 +217,7 @@ function TabelTemuan({ rec }: { rec: Record<string, unknown> }) {
                 <TableCell className="text-right text-xs tabular-nums">{b.nilai != null ? `${b.nilai} ${b.sat}` : '-'}</TableCell>
                 <TableCell className="text-xs whitespace-nowrap">
                   {b.lat != null && b.lng != null ? (
-                    <a className="text-green-700 underline decoration-dotted" target="_blank" rel="noopener"
+                    <a className="text-emerald-300 underline decoration-dotted" target="_blank" rel="noopener"
                       href={`https://www.google.com/maps?q=${b.lat},${b.lng}`}>
                       {b.lat.toFixed(6)}, {b.lng.toFixed(6)}{b.akr != null ? ` (±${b.akr} m)` : ''}
                     </a>
@@ -456,7 +456,7 @@ export default function DataPage() {
         </div>
       </div>
 
-      <Card className="border-green-100">
+      <Card className="border-emerald-500/20">
         <CardContent className="p-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-8">
             <div className="space-y-1.5 lg:col-span-2">
@@ -468,7 +468,7 @@ export default function DataPage() {
             <div className="space-y-1.5">
               <Label htmlFor="fk">Kebun</Label>
               {kbScope ? (
-                <div className="flex h-9 items-center rounded-md border border-green-200 bg-green-50 px-3 text-sm font-medium text-green-800" id="fk">
+                <div className="flex h-9 items-center rounded-md border border-emerald-500/25 bg-emerald-500/10 px-3 text-sm font-medium text-emerald-200" id="fk">
                   <span className="truncate">{kbScope} (terkunci)</span>
                 </div>
               ) : (
@@ -509,7 +509,7 @@ export default function DataPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={applyFilters} size="sm" className="bg-green-700 hover:bg-green-800">
+            <Button onClick={applyFilters} size="sm" className="bg-emerald-600 hover:bg-emerald-700">
               <Search className="h-4 w-4 mr-1.5" /> Tampilkan
             </Button>
             <Button variant="ghost" size="sm" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); setPage(1) }}>
@@ -539,10 +539,10 @@ export default function DataPage() {
               { l: 'Afdeling', v: new Set(rekapRecords.map((x) => String(x.afdeling || '').toUpperCase()).filter(Boolean)).size.toLocaleString('id-ID') },
               { l: 'Kebun', v: new Set(rekapRecords.map((x) => String(x.kebun || '').toUpperCase()).filter(Boolean)).size.toLocaleString('id-ID') },
             ].map((k) => (
-              <Card key={k.l} className="border-green-100">
+              <Card key={k.l} className="border-emerald-500/20">
                 <CardContent className="p-3">
                   <p className="text-xs text-muted-foreground">{k.l}</p>
-                  <p className="text-lg font-bold text-green-800">{k.v}</p>
+                  <p className="text-lg font-bold text-emerald-200">{k.v}</p>
                 </CardContent>
               </Card>
             ))}
@@ -555,7 +555,7 @@ export default function DataPage() {
             <div className="ml-auto text-xs text-muted-foreground">Kolom sama persis dengan sheet &quot;Rekap&quot; pada ekspor Excel.</div>
           </div>
 
-          <Card className="border-green-100">
+          <Card className="border-emerald-500/20">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
@@ -571,9 +571,9 @@ export default function DataPage() {
                       <TableHead>Blok</TableHead>
                       <TableHead className="text-right">Luas (Ha)</TableHead>
                       <TableHead className="text-right">Jumlah Pokok</TableHead>
-                      <TableHead>Pasar Kanan</TableHead>
+                      <TableHead>Baris Kanan</TableHead>
                       <TableHead className="text-right">Nomor Baris Kanan</TableHead>
-                      <TableHead>Pasar Kiri</TableHead>
+                      <TableHead>Baris Kiri</TableHead>
                       <TableHead className="text-right">Nomor Baris Kiri</TableHead>
                       <TableHead className="text-right">Ancak</TableHead>
                       <TableHead>Kategori Ancak</TableHead>
@@ -631,7 +631,7 @@ export default function DataPage() {
                           <TableCell className="text-right">
                             {nFoto > 0 ? (
                               <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setGalleryId(r.id)}>
-                                <Camera className="h-3.5 w-3.5 mr-1 text-green-700" /> {nFoto}
+                                <Camera className="h-3.5 w-3.5 mr-1 text-emerald-300" /> {nFoto}
                               </Button>
                             ) : 0}
                           </TableCell>
@@ -642,7 +642,7 @@ export default function DataPage() {
                               <Eye className="h-4 w-4" />
                             </Button>
                             {canDelete(r) && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" aria-label="Hapus" onClick={() => doDelete(r)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" aria-label="Hapus" onClick={() => doDelete(r)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
@@ -675,7 +675,7 @@ export default function DataPage() {
               Kolom sama persis dengan sheet &quot;Detail Temuan&quot; pada ekspor Excel — satu baris per temuan / sampel / foto.
             </div>
           </div>
-          <Card className="border-green-100">
+          <Card className="border-emerald-500/20">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
@@ -688,9 +688,9 @@ export default function DataPage() {
                       <TableHead>Kebun</TableHead>
                       <TableHead>Afdeling</TableHead>
                       <TableHead>Blok</TableHead>
-                      <TableHead>Pasar Kanan</TableHead>
+                      <TableHead>Baris Kanan</TableHead>
                       <TableHead className="text-right">Nomor Baris Kanan</TableHead>
-                      <TableHead>Pasar Kiri</TableHead>
+                      <TableHead>Baris Kiri</TableHead>
                       <TableHead className="text-right">Nomor Baris Kiri</TableHead>
                       <TableHead className="text-right">Ancak</TableHead>
                       <TableHead>Kategori Ancak</TableHead>
@@ -747,7 +747,7 @@ export default function DataPage() {
                         <TableCell className="text-xs">{b.src || '*'}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           {b.lat != null && b.lng != null ? (
-                            <a className="text-xs text-green-700 underline decoration-dotted" target="_blank" rel="noopener"
+                            <a className="text-xs text-emerald-300 underline decoration-dotted" target="_blank" rel="noopener"
                               href={`https://www.google.com/maps?q=${b.lat},${b.lng}`}>
                               <MapPin className="inline h-3 w-3 mr-0.5" />Buka Peta
                             </a>
@@ -756,7 +756,7 @@ export default function DataPage() {
                         <TableCell>
                           {b.fotoAda ? (
                             <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setGalleryId(b.id)}>
-                              <Camera className="h-3.5 w-3.5 mr-1 text-green-700" /> Lihat
+                              <Camera className="h-3.5 w-3.5 mr-1 text-emerald-300" /> Lihat
                             </Button>
                           ) : (
                             <span className="text-xs text-muted-foreground">Tidak ada foto</span>
@@ -769,7 +769,7 @@ export default function DataPage() {
                           {(() => {
                             const row = data?.rows.find((x) => x.id === b.id)
                             return row && canDelete(row) ? (
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" aria-label="Hapus" onClick={() => doDelete(row)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" aria-label="Hapus" onClick={() => doDelete(row)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             ) : null
@@ -818,7 +818,7 @@ export default function DataPage() {
               <Switch checked={withPhoto} onCheckedChange={setWithPhoto} />
             </div>
             <div className="grid gap-2">
-              <Button disabled={exporting} className="bg-green-700 hover:bg-green-800" onClick={() => eksporXlsx(withPhoto)}>
+              <Button disabled={exporting} className="bg-emerald-600 hover:bg-emerald-700" onClick={() => eksporXlsx(withPhoto)}>
                 <FileSpreadsheet className="h-4 w-4 mr-1.5" /> {exporting ? 'Menyiapkan…' : 'Unduh Excel (Rekap + Detail Temuan)'}
               </Button>
               <Button asChild variant="outline" onClick={() => setExportOpen(false)}>
@@ -850,11 +850,11 @@ export default function DataPage() {
               <Label>Sertakan foto temuan</Label>
               <Switch checked={withPhoto} onCheckedChange={setWithPhoto} />
             </div>
-            <Button onClick={doShare} className="w-full bg-green-700 hover:bg-green-800">
+            <Button onClick={doShare} className="w-full bg-emerald-600 hover:bg-emerald-700">
               <Link2 className="h-4 w-4 mr-1.5" /> Buat Tautan (filter aktif diterapkan)
             </Button>
             {shareUrl && (
-              <div className="flex items-center gap-2 rounded-md border bg-green-50 p-2">
+              <div className="flex items-center gap-2 rounded-md border bg-emerald-500/10 p-2">
                 <code className="text-xs flex-1 truncate">{shareUrl}</code>
                 <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Salin"
                   onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success('Tautan disalin') }}>
@@ -905,8 +905,8 @@ export default function DataPage() {
                   ['Kebun', detail.kebun],
                   ['Afdeling', detail.afdeling],
                   ['Blok', detail.blok],
-                  ['Pasar Kanan', detail.record?.noPasarKanan],
-                  ['Pasar Kiri', detail.record?.noPasarKiri],
+                  ['Baris Kanan', detail.record?.noPasarKanan],
+                  ['Baris Kiri', detail.record?.noPasarKiri],
                   ['Ancak', detail.record?.ancak],
                   ['Kategori Ancak', detail.record?.ancakStatus],
                   ['Sumber perangkat', detail.perangkat],
@@ -1116,8 +1116,8 @@ async function eksporSheets(
         { header: 'No', key: 'no', width: 6 }, { header: 'Kode Transaksi', key: 'kode', width: 28 }, { header: 'Tanggal', key: 'tgl', width: 12 }, { header: 'Pemeriksa', key: 'pem', width: 20 },
         { header: 'Estate', key: 'pt', width: 8 }, { header: 'Kebun', key: 'kebun', width: 10 }, { header: 'Afdeling', key: 'afd', width: 10 }, { header: 'Blok', key: 'blok', width: 10 },
         { header: 'Luas (Ha)', key: 'luas', width: 10 }, { header: 'Jumlah Pokok', key: 'pokok', width: 13 },
-        { header: 'Pasar Kanan', key: 'pasarKanan', width: 13 }, { header: 'Nomor Baris Kanan', key: 'noKanan', width: 16 },
-        { header: 'Pasar Kiri', key: 'pasarKiri', width: 13 }, { header: 'Nomor Baris Kiri', key: 'noKiri', width: 16 },
+        { header: 'Baris Kanan', key: 'pasarKanan', width: 13 }, { header: 'Nomor Baris Kanan', key: 'noKanan', width: 16 },
+        { header: 'Baris Kiri', key: 'pasarKiri', width: 13 }, { header: 'Nomor Baris Kiri', key: 'noKiri', width: 16 },
         { header: 'Ancak', key: 'ancak', width: 8 }, { header: 'Kategori Ancak', key: 'ancakSt', width: 18 },
         { header: 'Semak (Ha)', key: 'semak', width: 11 }, { header: 'Tunasan (Pkk)', key: 'tunasan', width: 13 }, { header: 'Titi (Unit)', key: 'titi', width: 11 },
         { header: 'Kerdil (Pkk)', key: 'kerdil', width: 12 }, { header: 'Banjir (Ha)', key: 'banjir', width: 11 }, { header: 'Jumlah Foto', key: 'foto', width: 11 },
@@ -1132,8 +1132,8 @@ async function eksporSheets(
       columns: [
         { header: 'No', key: 'no', width: 6 }, { header: 'Kode Transaksi', key: 'kode', width: 28 }, { header: 'Tanggal', key: 'tgl', width: 12 },
         { header: 'Estate', key: 'pt', width: 8 }, { header: 'Kebun', key: 'kebun', width: 10 }, { header: 'Afdeling', key: 'afd', width: 10 }, { header: 'Blok', key: 'blok', width: 10 },
-        { header: 'Pasar Kanan', key: 'pasarKanan', width: 13 }, { header: 'Nomor Baris Kanan', key: 'noKanan', width: 16 },
-        { header: 'Pasar Kiri', key: 'pasarKiri', width: 13 }, { header: 'Nomor Baris Kiri', key: 'noKiri', width: 16 },
+        { header: 'Baris Kanan', key: 'pasarKanan', width: 13 }, { header: 'Nomor Baris Kanan', key: 'noKanan', width: 16 },
+        { header: 'Baris Kiri', key: 'pasarKiri', width: 13 }, { header: 'Nomor Baris Kiri', key: 'noKiri', width: 16 },
         { header: 'Ancak', key: 'ancak', width: 8 }, { header: 'Kategori Ancak', key: 'katAncak', width: 18 },
         { header: 'Temuan', key: 'tem', width: 24 }, { header: 'Sampel', key: 'sam', width: 9 }, { header: 'Nilai', key: 'nilai', width: 9 }, { header: 'Satuan', key: 'sat', width: 9 },
         { header: 'Latitude', key: 'lat', width: 13 }, { header: 'Longitude', key: 'lng', width: 13 }, { header: 'Akurasi (m)', key: 'akr', width: 11 }, { header: 'Sumber Lokasi', key: 'src', width: 18 },
