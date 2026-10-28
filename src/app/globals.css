@@ -43,80 +43,94 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
+/* ============================================================
+   Tema gelap "Emerald Night" — default web Cek Blok.
+   Palet :root DAN .dark sama (web selalu gelap, hijau premium).
+   ============================================================ */
+:root,
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --radius: 0.75rem;
+  --background: oklch(0.17 0.018 165);
+  --foreground: oklch(0.95 0.012 155);
+  --card: oklch(0.215 0.022 164);
+  --card-foreground: oklch(0.95 0.012 155);
+  --popover: oklch(0.22 0.022 164);
+  --popover-foreground: oklch(0.95 0.012 155);
+  --primary: oklch(0.79 0.15 160);
+  --primary-foreground: oklch(0.2 0.04 165);
+  --secondary: oklch(0.27 0.025 164);
+  --secondary-foreground: oklch(0.95 0.012 155);
+  --muted: oklch(0.26 0.022 164);
+  --muted-foreground: oklch(0.72 0.025 158);
+  --accent: oklch(0.29 0.03 163);
+  --accent-foreground: oklch(0.96 0.012 155);
+  --destructive: oklch(0.66 0.19 23);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 13%);
+  --ring: oklch(0.75 0.13 160);
+  --chart-1: oklch(0.82 0.16 162);
+  --chart-2: oklch(0.75 0.12 195);
+  --chart-3: oklch(0.8 0.15 85);
+  --chart-4: oklch(0.7 0.16 305);
+  --chart-5: oklch(0.72 0.18 20);
+  --sidebar: oklch(0.19 0.02 164);
+  --sidebar-foreground: oklch(0.95 0.012 155);
+  --sidebar-primary: oklch(0.79 0.15 160);
+  --sidebar-primary-foreground: oklch(0.2 0.04 165);
+  --sidebar-accent: oklch(0.28 0.028 163);
+  --sidebar-accent-foreground: oklch(0.96 0.012 155);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.75 0.13 160);
+  color-scheme: dark;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    color-scheme: dark;
+  }
   body {
     @apply bg-background text-foreground;
+    /* aura hijau lembut di sudut atas — nuansa premium tanpa berisik */
+    background-image:
+      radial-gradient(1100px 480px at 12% -10%, oklch(0.32 0.07 163 / 0.32), transparent 62%),
+      radial-gradient(900px 420px at 105% -5%, oklch(0.30 0.06 195 / 0.16), transparent 58%);
+    background-attachment: fixed;
+  }
+  ::selection {
+    background: oklch(0.79 0.15 160 / 0.35);
+  }
+  /* scrollbar senada tema */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.42 0.05 163 / 0.8) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.42 0.05 163 / 0.55);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.5 0.07 163 / 0.8);
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* kartu terasa "melayang" halus di tema gelap */
+@layer components {
+  [data-slot="card"] {
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 0.04) inset,
+      0 14px 34px -18px oklch(0 0 0 / 0.55);
   }
 }
