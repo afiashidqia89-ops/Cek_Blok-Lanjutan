@@ -273,20 +273,66 @@ export async function POST(req: Request) {
     dihapus = res.count
   }
 
-  let masuk = 0
-  for (const r of unik) {
-    await db.blokMaster.upsert({
-      where: { estate_kebun_afdeling_blok: { estate: r.estate, kebun: r.kebun, afdeling: r.afdeling, blok: r.blok } },
-      create: { estate: r.estate, kebun: r.kebun, afdeling: r.afdeling, blok: r.blok, luas: r.luas, pokok: r.pokok },
-      update: { luas: r.luas, pokok: r.pokok },
+  /**
+   * Tulis cepat (aman untuk ribuan baris & batas waktu hosting):
+   *  - replace : semua baris di-INSERT massal (createMany per 1000 baris)
+   *  - merge   : bandingkan dengan data lama sekali ambil — baris BARU di-INSERT
+   *              massal, baris yang LUAS/POKOK-nya benar-benar berubah saja yang
+   *              di-update. Tanpa perubahan = tanpa tulis (jauh lebih cepat
+   *              daripada upsert satu per satu yang dulu memicu timeout 504
+   *              sehingga browser menampilkan "JSON.parse: unexpected character").
+   */
+  const samaDengan = (
+    a: { luas: number | null; pokok: number | null },
+    b: { luas: number | null; pokok: number | null }
+  ) => (a.luas ?? null) === (b.luas ?? null) && (a.pokok ?? null) === (b.pokok ?? null)
+
+  let ditulis = 0
+  if (mode === 'replace') {
+    for (let i = 0; i < unik.length; i += 1000) {
+      await db.blokMaster.createMany({
+        data: unik.slice(i, i + 1000).map((r) => ({
+          estate: r.estate, kebun: r.kebun, afdeling: r.afdeling, blok: r.blok, luas: r.luas, pokok: r.pokok,
+        })),
+      })
+      ditulis += Math.min(1000, unik.length - i)
+    }
+  } else {
+    const lama = await db.blokMaster.findMany({
+      where: { kebun: { in: kebunTerlibat } },
+      select: { estate: true, kebun: true, afdeling: true, blok: true, luas: true, pokok: true },
     })
-    masuk++
+    const lamaMap = new Map(lama.map((r) => [`${r.estate}|${r.kebun}|${r.afdeling}|${r.blok}`, r]))
+    const baru: BarisMaster[] = []
+    const ubah: BarisMaster[] = []
+    for (const r of unik) {
+      const key = `${r.estate}|${r.kebun}|${r.afdeling}|${r.blok}`
+      const prev = lamaMap.get(key)
+      if (!prev) baru.push(r)
+      else if (!samaDengan(prev, r)) ubah.push(r)
+      // sama persis -> lewati (tidak menulis ulang)
+    }
+    for (let i = 0; i < baru.length; i += 1000) {
+      await db.blokMaster.createMany({
+        data: baru.slice(i, i + 1000).map((r) => ({
+          estate: r.estate, kebun: r.kebun, afdeling: r.afdeling, blok: r.blok, luas: r.luas, pokok: r.pokok,
+        })),
+      })
+    }
+    for (const r of ubah) {
+      await db.blokMaster.updateMany({
+        where: { estate: r.estate, kebun: r.kebun, afdeling: r.afdeling, blok: r.blok },
+        data: { luas: r.luas, pokok: r.pokok },
+      })
+    }
+    ditulis = baru.length + ubah.length
   }
+  const masuk = unik.length
 
   await logAudit(
     admin,
     'MASTER_IMPOR',
-    `${sumberLabel}: ${masuk} blok (mode ${mode}${dihapus ? `, hapus ${dihapus}` : ''}), kebun: ${kebunTerlibat.slice(0, 8).join(',')}${kebunTerlibat.length > 8 ? '…' : ''}`
+    `${sumberLabel}: ${masuk} blok (mode ${mode}${dihapus ? `, hapus ${dihapus}` : ''}, tulis ${ditulis}), kebun: ${kebunTerlibat.slice(0, 8).join(',')}${kebunTerlibat.length > 8 ? '…' : ''}`
   )
-  return NextResponse.json({ ok: true, masuk, dihapus, mode, sumber: sumberLabel, total: await db.blokMaster.count() })
+  return NextResponse.json({ ok: true, masuk, ditulis, dihapus, mode, sumber: sumberLabel, total: await db.blokMaster.count() })
 }
