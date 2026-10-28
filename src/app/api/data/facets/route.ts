@@ -22,7 +22,8 @@ export async function GET() {
     if (!sc.semua) where = scopeRecordWhere(s)
     else if (!seeAll) where = { uploadedById: s.uid }
 
-    const [kebun, afdeling, blok, pemeriksa] = await Promise.all([
+    const [estate, kebun, afdeling, blok, pemeriksa] = await Promise.all([
+      db.dataRecord.findMany({ where, distinct: ['estate'], select: { estate: true } }),
       db.dataRecord.findMany({ where, distinct: ['kebun'], select: { kebun: true } }),
       db.dataRecord.findMany({ where, distinct: ['afdeling'], select: { afdeling: true } }),
       db.dataRecord.findMany({ where, distinct: ['blok'], select: { blok: true } }),
@@ -36,6 +37,7 @@ export async function GET() {
       ok: true,
       scopeKebun: sc.semua ? '' : sc.kebun.join(', '),
       scope: sc,
+      estate: clean(estate as never, 'estate'),
       kebun: clean(kebun as never, 'kebun'),
       afdeling: clean(afdeling as never, 'afdeling'),
       blok: clean(blok as never, 'blok'),
