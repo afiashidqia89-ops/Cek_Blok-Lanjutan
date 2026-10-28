@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,9 +10,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import { Database, TrendingUp, BarChart3, Map, Layers, ArrowRight, MapPin, Camera } from 'lucide-react'
+import {
+  Database, TrendingUp, BarChart3, Map, Layers, ArrowRight, MapPin, Camera,
+  TreePalm, ClipboardList, TriangleAlert, Leaf, Users, Eye, Layers3,
+} from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts'
 import { jsonFetch } from '@/lib/api'
+import { LogoHPI } from '@/components/dashboard-shell'
 
 interface StatsData {
   role: 'SUPERADMIN' | 'ADMIN' | 'USER'
@@ -24,6 +29,8 @@ interface StatsData {
   activeUsers?: number
   activeTokens?: number
   totalBlokMaster?: number
+  masterLuas?: number
+  masterPokok?: number
   blokDiperiksa?: number
   scopeKebun?: string
   tren14?: { tanggal: string; jumlah: number }[]
@@ -53,14 +60,35 @@ const WARNA_STATUS: Record<string, string> = {
 }
 const WARNA_LAIN = ['#34d399', '#38bdf8', '#c084fc', '#fb923c', '#94a3b8', '#2dd4bf', '#facc15', '#f472b6']
 
-const TIP = { contentStyle: { background: 'rgba(4,22,14,0.94)', border: '1px solid rgba(52,211,153,0.28)', borderRadius: 12, color: '#d1fae5', fontSize: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }, labelStyle: { color: '#a7f3d0', fontWeight: 600 }, itemStyle: { color: '#ecfdf5' } }
+const TIP = {
+  contentStyle: {
+    background: 'rgba(255,255,255,0.97)', border: '1px solid rgba(22,101,52,0.18)',
+    borderRadius: 12, color: '#14532d', fontSize: 12, boxShadow: '0 12px 32px rgba(20,60,35,0.15)',
+  },
+  labelStyle: { color: '#166534', fontWeight: 600 },
+  itemStyle: { color: '#14532d' },
+}
 
 function statusColor(s: string): string {
   const st = (s || '').toLowerCase()
-  if (st.includes('kritis') || st.includes('buruk')) return 'bg-red-500/15 text-red-300'
-  if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang')) return 'bg-amber-500/15 text-amber-300'
-  if (st) return 'bg-emerald-500/15 text-emerald-300'
+  if (st.includes('kritis') || st.includes('buruk') || st.includes('prioritas')) return 'bg-red-500/12 text-red-700'
+  if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang') || st.includes('perbaikan')) return 'bg-amber-500/15 text-amber-700'
+  if (st.includes('baik')) return 'bg-emerald-500/15 text-emerald-700'
+  if (st) return 'bg-emerald-600/10 text-emerald-800'
   return 'bg-muted text-muted-foreground'
+}
+
+function titikWarna(s: string): string {
+  const st = (s || '').toLowerCase()
+  if (st.includes('kritis') || st.includes('buruk') || st.includes('prioritas')) return 'bg-red-500'
+  if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang') || st.includes('perbaikan')) return 'bg-amber-500'
+  if (st) return 'bg-emerald-500'
+  return 'bg-muted-foreground/40'
+}
+
+function angkaID(n: number | null | undefined, dec = 0): string {
+  if (n == null || !Number.isFinite(n)) return '-'
+  return n.toLocaleString('id-ID', { minimumFractionDigits: dec, maximumFractionDigits: dec })
 }
 
 export default function DashboardHome() {
@@ -75,11 +103,11 @@ export default function DashboardHome() {
 
   if (error) {
     return (
-      <Card className="border-red-500/30 bg-red-500/10">
-        <CardContent className="p-4 text-sm text-red-300">
+      <Card className="border-red-500/30 bg-red-500/5">
+        <CardContent className="p-4 text-sm text-red-700">
           <p className="font-semibold">Gagal memuat ringkasan</p>
-          <p className="mt-1 text-red-400">{error}</p>
-          <Button size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-300 hover:bg-red-500/15" onClick={() => location.reload()}>
+          <p className="mt-1 text-red-600">{error}</p>
+          <Button size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-700 hover:bg-red-500/10" onClick={() => location.reload()}>
             Muat Ulang
           </Button>
         </CardContent>
@@ -89,7 +117,10 @@ export default function DashboardHome() {
   if (!data) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-20 w-full rounded-xl" />
+        <Skeleton className="h-52 w-full rounded-2xl" />
+        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+        </div>
         <div className="grid gap-6 lg:grid-cols-5">
           <Skeleton className="h-64 w-full rounded-xl lg:col-span-3" />
           <Skeleton className="h-64 w-full rounded-xl lg:col-span-2" />
@@ -103,20 +134,62 @@ export default function DashboardHome() {
   const scoped = (data.scopeKebun || '').trim()
 
   const tautan = [
-    { href: '/dashboard/laporan', i: BarChart3, t: 'Laporan & Grafik', d: 'Tren, status, dan rekap per kebun/afdeling' },
+    { href: '/dashboard/laporan', i: BarChart3, t: 'Rekap & Analitik', d: 'Tren, status, dan rekap per kebun/afdeling' },
     { href: '/dashboard/data', i: Database, t: 'Data Pemeriksaan', d: 'Rekap & hasil temuan, unggah Excel' },
     { href: '/dashboard/peta', i: Map, t: 'Peta Blok', d: 'Hasil pemeriksaan di-layout ke peta' },
-    ...(superadmin ? [{ href: '/dashboard/data-master', i: Layers, t: 'Data Master', d: 'Impor XLSX, daftar blok, luas, pokok' }] : []),
+    ...(superadmin ? [{ href: '/dashboard/data-master', i: Layers, t: 'Estate & Kebun', d: 'Impor XLSX, daftar blok, luas, pokok' }] : []),
   ]
 
   const perStatus = (data.perStatus || []).slice(0, 8)
   const totalStatus = perStatus.reduce((s, x) => s + x.jumlah, 0) || 1
 
+  // ---- Kartu statistik gaya desain HPI ----
+  const totalBlok = data.totalBlokMaster ?? 0
+  const diperiksa = data.blokDiperiksa ?? 0
+  const persen = totalBlok > 0 ? Math.min(100, Math.round((diperiksa / totalBlok) * 1000) / 10) : 0
+  const perluTL = (data.perStatus || [])
+    .filter((x) => /prioritas|perbaikan|perlu|kritis|buruk/i.test(x.status))
+    .reduce((s, x) => s + x.jumlah, 0)
+
+  const kartu = [
+    { l: 'Total Blok', v: angkaID(totalBlok), i: TreePalm, kelas: 'bg-emerald-100 text-emerald-700' },
+    { l: 'Pemeriksaan', v: angkaID(data.totalRecords), i: ClipboardList, kelas: 'bg-sky-100 text-sky-700' },
+    { l: 'Blok Diperiksa', v: angkaID(diperiksa), i: Layers3, kelas: 'bg-emerald-100 text-emerald-700', bar: persen },
+    { l: 'Perlu Tindak Lanjut', v: angkaID(perluTL), i: TriangleAlert, kelas: 'bg-orange-100 text-orange-600' },
+    { l: 'Total Luas Areal', v: `${angkaID(data.masterLuas, 2)} Ha`, i: Leaf, kelas: 'bg-green-100 text-green-700' },
+    { l: 'Total Jumlah Pokok', v: angkaID(data.masterPokok), i: Users, kelas: 'bg-sky-100 text-sky-700' },
+  ]
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* ===== Banner foto kebun sawit (gaya desain HPI) ===== */}
+      <div className="relative overflow-hidden rounded-2xl shadow-md shadow-emerald-900/10">
+        <Image
+          src="/banner-kebun.jpg"
+          alt="Kebun sawit"
+          width={1344}
+          height={768}
+          priority
+          className="h-44 w-full object-cover sm:h-56 lg:h-64"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/35 via-transparent to-emerald-950/25" />
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-right drop-shadow-lg sm:right-8">
+          <div className="flex items-center justify-end gap-3">
+            <LogoHPI className="h-12 w-12 sm:h-16 sm:w-16 drop-shadow" />
+            <div className="leading-none">
+              <p className="font-serif text-3xl font-bold italic text-white sm:text-4xl">HPI</p>
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-50 sm:text-[11px]">
+                Sustainable<br />Palm Oil
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Header ringkasan */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Ringkasan</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-emerald-950">Ringkasan</h1>
           <p className="text-sm text-muted-foreground">
             {scoped
               ? `Lingkup data: kebun ${scoped} (sesuai penugasan akun Anda).`
@@ -126,9 +199,34 @@ export default function DashboardHome() {
           </p>
         </div>
         <div className="flex gap-2 text-sm">
-          <Badge variant="outline" className="bg-card"><TrendingUp className="h-3 w-3 mr-1 text-emerald-300" />7 hari: {data.records7d ?? 0}</Badge>
-          <Badge variant="outline" className="bg-card"><Camera className="h-3 w-3 mr-1 text-emerald-300" />Data master: {data.totalBlokMaster != null ? data.totalBlokMaster.toLocaleString('id-ID') + ' blok' : '—'}</Badge>
+          <Badge variant="outline" className="bg-card"><TrendingUp className="h-3 w-3 mr-1 text-emerald-600" />7 hari: {data.records7d ?? 0}</Badge>
+          <Badge variant="outline" className="bg-card"><Camera className="h-3 w-3 mr-1 text-emerald-600" />Data master: {data.totalBlokMaster != null ? data.totalBlokMaster.toLocaleString('id-ID') + ' blok' : '—'}</Badge>
         </div>
+      </div>
+
+      {/* ===== Kartu statistik (6) ===== */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {kartu.map((k) => {
+          const Icon = k.i
+          return (
+            <Card key={k.l} className="border-emerald-600/10 py-0">
+              <CardContent className="flex h-full items-center gap-3 p-4">
+                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${k.kelas}`}>
+                  <Icon className="h-5.5 w-5.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-medium text-muted-foreground">{k.l}</span>
+                  <span className="block truncate text-lg font-bold tabular-nums text-emerald-950">{k.v}</span>
+                  {k.bar != null && totalBlok > 0 && (
+                    <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-emerald-600/15">
+                      <span className="block h-full rounded-full bg-emerald-700" style={{ width: `${Math.max(2, k.bar)}%` }} />
+                    </span>
+                  )}
+                </span>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       {/* Tautan cepat */}
@@ -139,16 +237,16 @@ export default function DashboardHome() {
             <Link
               key={q.href}
               href={q.href}
-              className="group flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-card/70 p-4 transition-all hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-950/50"
+              className="group flex items-center gap-3 rounded-xl border border-emerald-600/15 bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-lg hover:shadow-emerald-900/10"
             >
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-500/25 to-emerald-500/5 text-emerald-300 ring-1 ring-emerald-400/25 transition-all group-hover:from-emerald-500 group-hover:to-emerald-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-emerald-950/50">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700 transition-all group-hover:bg-emerald-800 group-hover:text-white group-hover:shadow-md group-hover:shadow-emerald-900/20">
                 <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-emerald-100">{q.t}</p>
+                <p className="text-sm font-semibold text-emerald-950">{q.t}</p>
                 <p className="truncate text-xs text-muted-foreground">{q.d}</p>
               </div>
-              <ArrowRight className="h-4 w-4 text-green-300 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-300" />
+              <ArrowRight className="h-4 w-4 text-emerald-600/60 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700" />
             </Link>
           )
         })}
@@ -156,7 +254,7 @@ export default function DashboardHome() {
 
       {/* Grafik */}
       <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3 border-emerald-500/20">
+        <Card className="lg:col-span-3 border-emerald-600/15">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Tren Pemeriksaan 14 Hari</CardTitle>
             <CardDescription>Jumlah transaksi masuk per tanggal</CardDescription>
@@ -164,17 +262,17 @@ export default function DashboardHome() {
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.tren14 || []} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.14)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(20,83,45,0.10)" vertical={false} />
                 <XAxis dataKey="tanggal" tickFormatter={(v: string) => v.slice(5)} fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                 <YAxis allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
                 <RTooltip {...TIP} formatter={(v) => [`${v} transaksi`, 'Jumlah']} labelFormatter={(l) => `Tanggal ${l}`} />
-                <Bar dataKey="jumlah" fill="#34d399" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="jumlah" fill="#16a34a" radius={[4, 4, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2 border-emerald-500/20">
+        <Card className="lg:col-span-2 border-emerald-600/15">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Status Blok</CardTitle>
             <CardDescription>Distribusi kondisi blok yang diperiksa</CardDescription>
@@ -211,9 +309,9 @@ export default function DashboardHome() {
 
       {/* Kebun teratas + tabel terbaru */}
       {(data.perKebun || []).length > 0 && (
-        <Card className="border-emerald-500/20">
+        <Card className="border-emerald-600/15">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-1.5"><MapPin className="h-4 w-4 text-emerald-300" /> Kebun Tersibuk</CardTitle>
+            <CardTitle className="text-base flex items-center gap-1.5"><MapPin className="h-4 w-4 text-emerald-600" /> Kebun Tersibuk</CardTitle>
             <CardDescription>8 kebun dengan transaksi terbanyak</CardDescription>
           </CardHeader>
           <CardContent className="h-48">
@@ -222,7 +320,7 @@ export default function DashboardHome() {
                 <XAxis type="number" allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis type="category" dataKey="kebun" width={90} fontSize={11} tickLine={false} axisLine={false} />
                 <RTooltip {...TIP} formatter={(v) => [`${v} transaksi`, 'Jumlah']} />
-                <Bar dataKey="jumlah" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={16} />
+                <Bar dataKey="jumlah" fill="#15803d" radius={[0, 4, 4, 0]} maxBarSize={16} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -230,7 +328,7 @@ export default function DashboardHome() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3 border-emerald-500/20">
+        <Card className="lg:col-span-3 border-emerald-600/15">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Transaksi Terbaru</CardTitle>
             <CardDescription>8 pemeriksaan terakhir yang masuk ke server</CardDescription>
@@ -259,7 +357,10 @@ export default function DashboardHome() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{r.pemeriksa || '-'}</TableCell>
                       <TableCell>
-                        <Badge className={`border-transparent ${statusColor(r.status)}`}>{r.status || '-'}</Badge>
+                        <Badge className={`gap-1.5 border-transparent ${statusColor(r.status)}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${titikWarna(r.status)}`} />
+                          {r.status || '-'}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {r.perangkat || r.uploadedBy?.username || '-'}
@@ -275,9 +376,9 @@ export default function DashboardHome() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2 border-emerald-500/20">
+        <Card className="lg:col-span-2 border-emerald-600/15">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Aktivitas Terakhir</CardTitle>
+            <CardTitle className="text-base flex items-center gap-1.5"><Eye className="h-4 w-4 text-emerald-600" /> Aktivitas Terakhir</CardTitle>
             <CardDescription>{adminish ? 'Log server (admin)' : 'Catatan aktivitas Anda'}</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -299,7 +400,7 @@ export default function DashboardHome() {
             </div>
             {adminish && (
               <div className="border-t p-3">
-                <Link href="/dashboard/settings" className="text-sm font-medium text-emerald-300 hover:underline">
+                <Link href="/dashboard/settings?tab=log" className="text-sm font-medium text-emerald-700 hover:underline">
                   Lihat semua log →
                 </Link>
               </div>
