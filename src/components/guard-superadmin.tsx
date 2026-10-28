@@ -33,9 +33,9 @@ export default function GuardSuperAdmin({ children }: { children: React.ReactNod
     return (
       <Card className="border-amber-500/30 bg-amber-500/10">
         <CardContent className="p-6 text-center">
-          <ShieldAlert className="mx-auto h-10 w-10 text-amber-400" />
-          <h1 className="mt-2 text-lg font-bold text-amber-200">Akses Khusus Super Admin</h1>
-          <p className="mt-1 text-sm text-amber-300">
+          <ShieldAlert className="mx-auto h-10 w-10 text-amber-600" />
+          <h1 className="mt-2 text-lg font-bold text-amber-700">Akses Khusus Super Admin</h1>
+          <p className="mt-1 text-sm text-amber-700">
             Menu ini hanya tersedia untuk akun <b>Super Admin</b>.
             {role === 'ADMIN'
               ? ' Akun Anda admin biasa — minta Super Admin untuk menaikkan peran akun bila diperlukan.'
