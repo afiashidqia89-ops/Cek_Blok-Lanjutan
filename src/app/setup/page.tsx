@@ -57,7 +57,7 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 via-background to-emerald-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-emerald-950/70 via-background to-emerald-950/60">
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-4">
           <div className="text-center space-y-2">
@@ -68,10 +68,10 @@ export default function SetupPage() {
               height={72}
               className="mx-auto rounded-2xl shadow-md"
             />
-            <h1 className="text-2xl font-bold tracking-tight text-green-800">Setup Awal Server</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-emerald-200">Setup Awal Server</h1>
             <p className="text-sm text-muted-foreground">Buat akun admin pertama untuk Cek Blok Server</p>
           </div>
-          <Card className="shadow-lg border-green-100">
+          <Card className="shadow-lg border-emerald-500/20">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Akun Admin</CardTitle>
               <CardDescription>Hanya bisa dilakukan satu kali, saat server masih kosong</CardDescription>
@@ -81,10 +81,10 @@ export default function SetupPage() {
                 <p className="text-sm text-muted-foreground">Memeriksa server…</p>
               ) : !perluSetup ? (
                 <div className="space-y-3 text-sm">
-                  <p className="rounded-md border border-green-200 bg-green-50 p-3 text-green-800">
+                  <p className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-3 text-emerald-200">
                     Server sudah memiliki akun. Setup tidak diperlukan lagi.
                   </p>
-                  <Button asChild className="w-full bg-green-700 hover:bg-green-800">
+                  <Button asChild className="w-full bg-emerald-600 hover:bg-emerald-700">
                     <Link href="/login">Ke Halaman Login</Link>
                   </Button>
                 </div>
@@ -130,7 +130,7 @@ export default function SetupPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-green-700 hover:bg-green-800"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700"
                   >
                     {loading ? 'Membuat akun…' : 'Buat Akun Admin'}
                   </Button>
