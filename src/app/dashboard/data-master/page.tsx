@@ -134,7 +134,12 @@ function DataMasterIsi() {
     } finally { setImpBusy(false) }
   }
 
-  /** ---- IMPOR XLSX (format Excel saja, diparse di browser via ExcelJS) ---- */
+  /** ---- IMPOR XLSX (format Excel saja, diparse di browser via ExcelJS) ----
+   * Dikirim PER KEBUN dalam beberapa permintaan kecil supaya:
+   *  - tidak pernah menabrak batas ukuran body server (413) yang dulu
+   *    menampilkan "JSON.parse: unexpected character at line 1 column 1"
+   *  - mode "Ganti kebun terkait" tetap akurat (hapus-per-kebun utuh)
+   *  - gagal di tengah jalan jelas di kebun mana, sisanya tidak diulang */
   async function prosesImpor() {
     if (!impFile) { toast.error('Pilih berkas Excel (.xlsx) dulu'); return }
     if (!/\.xlsx$/i.test(impFile.name)) { toast.error('Format harus .xlsx — format Excel saja'); return }
@@ -161,13 +166,46 @@ function DataMasterIsi() {
       }).filter(Boolean) as { estate: string; kebun: string; afdeling: string; blok: string; luas: number | null; pokok: number | null }[]
       if (!rowsImpor.length) throw new Error('Tidak ada baris valid — pastikan ada kolom Estate, Kebun, Afdeling, Blok')
 
-      const res = await fetch('/api/master', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: rowsImpor, mode: impMode }),
-      })
-      const d = await res.json()
-      if (!res.ok || !d.ok) { toast.error(d.error || 'Gagal mengimpor'); return }
-      toast.success(`Impor selesai: ${fmt(d.masuk)} blok${d.dihapus ? `, ${fmt(d.dihapus)} baris lama diganti` : ''}`)
+      // kelompokkan per kebun, lalu kirim bertahap
+      const perKebun = new Map<string, typeof rowsImpor>()
+      for (const r of rowsImpor) {
+        const arr = perKebun.get(r.kebun) || []
+        arr.push(r)
+        perKebun.set(r.kebun, arr)
+      }
+      const daftarKebun = [...perKebun.keys()]
+      let masuk = 0, dihapus = 0, ditulis = 0
+      let iKebun = 0
+      for (const kb of daftarKebun) {
+        iKebun++
+        const grup = perKebun.get(kb)!
+        // kebun besar tetap dipecah jadi beberapa bagian kecil (maks 800 baris)
+        const BAGIAN = 800
+        const bagianCount = Math.ceil(grup.length / BAGIAN)
+        for (let b = 0; b < bagianCount; b++) {
+          const potongan = grup.slice(b * BAGIAN, (b + 1) * BAGIAN)
+          // mode 'replace' hanya pada BAGIAN PERTAMA tiap kebun agar baris lama
+          // kebun itu dihapus sekali, lalu bagian berikutnya digabung biasa
+          const modeKirim = impMode === 'replace' && b === 0 ? 'replace' : 'merge'
+          toast.info(
+            bagianCount > 1
+              ? `Mengunggah ${kb} (bagian ${b + 1}/${bagianCount}) — kebun ${iKebun}/${daftarKebun.length}…`
+              : `Mengunggah ${kb} (${iKebun}/${daftarKebun.length})…`
+          )
+          const d = await jsonFetch<{ ok: boolean; error?: string; masuk?: number; dihapus?: number; ditulis?: number }>('/api/master', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rows: potongan, mode: modeKirim }),
+          })
+          if (!d.ok) throw new Error(d.error || `Gagal mengimpor kebun ${kb}`)
+          masuk += d.masuk || 0
+          dihapus += d.dihapus || 0
+          ditulis += d.ditulis || 0
+        }
+      }
+      toast.success(
+        `Impor selesai: ${fmt(masuk)} blok${ditulis ? ` (${fmt(ditulis)} ditulis)` : ''}${dihapus ? `, ${fmt(dihapus)} baris lama diganti` : ''}`
+      )
       setImpOpen(false); setImpFile(null); loadRows(); loadFacets()
     } catch (e) {
       toast.error(String((e as Error).message || e))
