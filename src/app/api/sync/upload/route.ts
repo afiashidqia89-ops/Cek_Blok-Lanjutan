@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     await logAudit(
       { uid: tk.userId, username: tk.user.username },
       'SYNC_UPLOAD',
-      `diterima ${r.diterima}, baru ${r.baru}, duplikat ${r.duplikat} (perangkat: ${r.perangkat || '-'})`
+      `diterima ${r.diterima}, baru ${r.baru}, duplikat ${r.duplikat}, diperbarui ${r.diperbarui ?? 0} (perangkat: ${r.perangkat || '-'})`
     )
     return corsJson({ ok: true, ...r })
   } catch (e) {
