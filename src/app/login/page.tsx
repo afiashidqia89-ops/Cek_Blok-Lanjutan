@@ -51,7 +51,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 via-background to-emerald-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-emerald-950/70 via-background to-emerald-950/60">
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-4">
           <div className="text-center space-y-2">
@@ -60,14 +60,14 @@ function LoginForm() {
               alt="Logo Cek Blok"
               width={72}
               height={72}
-              className="mx-auto rounded-2xl shadow-md"
+              className="mx-auto rounded-2xl shadow-xl shadow-emerald-950/60 ring-1 ring-emerald-400/40"
             />
-            <h1 className="text-2xl font-bold tracking-tight text-green-800">Cek Blok Server</h1>
+            <h1 className="bg-gradient-to-r from-emerald-300 to-emerald-100 bg-clip-text text-2xl font-bold tracking-tight text-transparent">Cek Blok Server</h1>
             <p className="text-sm text-muted-foreground">
               Masuk untuk mengelola data pemeriksaan kondisi blok
             </p>
           </div>
-          <Card className="shadow-lg border-green-100">
+          <Card className="shadow-2xl shadow-black/40 border-emerald-500/20">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Login</CardTitle>
               <CardDescription>Gunakan username dan password akun Anda</CardDescription>
@@ -100,13 +100,13 @@ function LoginForm() {
                 <Button
                   type="submit"
                   disabled={loading || !username || !password}
-                  className="w-full bg-green-700 hover:bg-green-800"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700"
                 >
                   {loading ? 'Memproses…' : 'Masuk'}
                 </Button>
               </form>
               {perluSetup && (
-                <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
                   Belum ada akun admin di server ini.{' '}
                   <Link href="/setup" className="font-semibold underline">
                     Buat akun admin pertama →
@@ -117,7 +117,7 @@ function LoginForm() {
           </Card>
           <p className="text-center text-xs text-muted-foreground">
             Aplikasi Cek Blok bisa dibuka di{' '}
-            <Link href="/app/" className="font-medium text-green-700 underline">
+            <Link href="/app/" className="font-medium text-emerald-300 underline">
               /app/
             </Link>{' '}
             (browser HP) — fitur Kirim/Ambil dari Server aktif di sana.
