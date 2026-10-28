@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { dbErrorResponse, scopeRecordWhere, scopeUser } from '@/lib/api'
+import { dbErrorResponse, scopeBlokWhere, scopeRecordWhere, scopeUser } from '@/lib/api'
 
 /**
  * Statistik untuk halaman Ringkasan (gaya dashboard).
@@ -76,12 +76,15 @@ export async function GET() {
     })
 
     if (adminish) {
-      const [totalUsers, activeUsers, activeTokens, logs, totalBlokMaster] = await Promise.all([
+      const [totalUsers, activeUsers, activeTokens, logs, totalBlokMaster, masterAgg] = await Promise.all([
         db.user.count(),
         db.user.count({ where: { isActive: true } }),
         db.deviceToken.count({ where: { isActive: true } }),
         db.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8 }),
         db.blokMaster.count().catch(() => 0),
+        db.blokMaster
+          .aggregate({ _sum: { luas: true, pokok: true } })
+          .catch(() => ({ _sum: { luas: 0, pokok: 0 } })),
       ])
       return NextResponse.json({
         ok: true,
@@ -94,6 +97,8 @@ export async function GET() {
         records7d,
         activeTokens,
         totalBlokMaster,
+        masterLuas: Number((masterAgg._sum as { luas?: number | null }).luas || 0),
+        masterPokok: Number((masterAgg._sum as { pokok?: number | null }).pokok || 0),
         blokDiperiksa,
         tren14,
         perStatus,
@@ -104,9 +109,13 @@ export async function GET() {
       })
     }
 
-    const [ownRecords, myTokens] = await Promise.all([
+    const [ownRecords, myTokens, masterAggUser, blokMasterUser] = await Promise.all([
       db.dataRecord.count({ where: { uploadedById: s.uid } }),
       db.deviceToken.count({ where: { userId: s.uid, isActive: true } }),
+      db.blokMaster
+        .aggregate({ _sum: { luas: true, pokok: true }, where: scopeBlokWhere(s) as never })
+        .catch(() => ({ _sum: { luas: 0, pokok: 0 } })),
+      db.blokMaster.count({ where: scopeBlokWhere(s) as never }).catch(() => 0),
     ])
     return NextResponse.json({
       ok: true,
@@ -118,6 +127,9 @@ export async function GET() {
       ownRecords,
       records24h,
       activeTokens: myTokens,
+      totalBlokMaster: blokMasterUser,
+      masterLuas: Number((masterAggUser._sum as { luas?: number | null }).luas || 0),
+      masterPokok: Number((masterAggUser._sum as { pokok?: number | null }).pokok || 0),
       blokDiperiksa,
       tren14,
       perStatus,
