@@ -388,7 +388,7 @@ export default function PetaPage() {
           <div className="flex flex-wrap gap-2">
             <label>
               <input type="file" accept=".geojson,.json,application/geo+json,application/json" hidden onChange={importGeoJson} />
-              <Button asChild size="sm" className="bg-green-700 hover:bg-green-800 cursor-pointer" disabled={importing !== ''}>
+              <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer" disabled={importing !== ''}>
                 <span>{importing === 'geojson' ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Upload className="h-4 w-4 mr-1.5" />} Impor GeoJSON</span>
               </Button>
             </label>
@@ -403,13 +403,13 @@ export default function PetaPage() {
       </div>
 
       {/* Filter */}
-      <Card className="border-green-100">
+      <Card className="border-emerald-500/20">
         <CardContent className="p-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-1.5">
               <Label>Kebun</Label>
               {kbScope ? (
-                <div className="flex h-9 items-center rounded-md border border-green-200 bg-green-50 px-3 text-sm font-medium text-green-800">
+                <div className="flex h-9 items-center rounded-md border border-emerald-500/25 bg-emerald-500/10 px-3 text-sm font-medium text-emerald-200">
                   <span className="truncate">{kbScope} (terkunci)</span>
                 </div>
               ) : (
@@ -452,7 +452,7 @@ export default function PetaPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={() => { setApplied({ ...filters }); loadRecords({ ...filters }) }} size="sm" className="bg-green-700 hover:bg-green-800" disabled={loading || !ready}>
+            <Button onClick={() => { setApplied({ ...filters }); loadRecords({ ...filters }) }} size="sm" className="bg-emerald-600 hover:bg-emerald-700" disabled={loading || !ready}>
               {loading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Search className="h-4 w-4 mr-1.5" />} Tampilkan di Peta
             </Button>
             <Button variant="ghost" size="sm" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters) }}>
@@ -487,7 +487,7 @@ export default function PetaPage() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
         {/* Kanvas peta */}
-        <Card className="border-green-100 overflow-hidden">
+        <Card className="border-emerald-500/20 overflow-hidden">
           <CardContent className="p-0 relative">
             <canvas ref={cvRef} className="w-full h-[70vh] min-h-[420px] touch-none block bg-[#eef3ef]" />
             <div className="absolute top-2 right-2 flex flex-col gap-1.5">
@@ -498,7 +498,7 @@ export default function PetaPage() {
             {info && (
               <div className="absolute bottom-3 left-3 right-3 sm:right-auto sm:max-w-md max-h-[45%] overflow-y-auto rounded-lg border bg-background/95 backdrop-blur p-3 shadow-lg">
                 <button className="absolute top-1.5 right-2 text-muted-foreground hover:text-foreground text-lg leading-none" onClick={() => setInfo(null)} aria-label="Tutup">×</button>
-                <div className="peta-info [&_table]:w-full [&_table]:text-xs [&_table]:mt-2 [&_th]:text-left [&_th]:pr-3 [&_th]:text-muted-foreground [&_th]:font-normal [&_th]:align-top [&_td]:font-medium [&_td]:break-words [&_.peta-note]:mt-2 [&_.peta-note]:text-xs [&_.peta-note]:text-muted-foreground [&_.peta-link]:mt-2 [&_.peta-link]:inline-block [&_.peta-link]:text-sm [&_.peta-link]:text-green-700 [&_.peta-link]:underline"
+                <div className="peta-info [&_table]:w-full [&_table]:text-xs [&_table]:mt-2 [&_th]:text-left [&_th]:pr-3 [&_th]:text-muted-foreground [&_th]:font-normal [&_th]:align-top [&_td]:font-medium [&_td]:break-words [&_.peta-note]:mt-2 [&_.peta-note]:text-xs [&_.peta-note]:text-muted-foreground [&_.peta-link]:mt-2 [&_.peta-link]:inline-block [&_.peta-link]:text-sm [&_.peta-link]:text-emerald-300 [&_.peta-link]:underline"
                   dangerouslySetInnerHTML={{ __html: info.html }} />
                 {info.kind === 'temuan' && (
                   <div className="mt-2 border-t pt-2">
@@ -532,7 +532,7 @@ export default function PetaPage() {
 
         {/* Panel kanan */}
         <div className="space-y-4">
-          <Card className="border-green-100">
+          <Card className="border-emerald-500/20">
             <CardContent className="p-4 space-y-2">
               <p className="flex items-center gap-2 text-sm font-semibold"><Layers className="h-4 w-4" /> Lapisan peta ({layers.length})</p>
               {!isAdmin && <p className="text-xs text-muted-foreground">Hanya admin yang bisa mengimpor/menghapus lapisan.</p>}
@@ -544,7 +544,7 @@ export default function PetaPage() {
               <div className="max-h-52 overflow-y-auto space-y-1.5">
                 {layers.map(L => (
                   <div key={L.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                    {L.type === 'RASTER' ? <FileText className="h-4 w-4 shrink-0 text-amber-600" /> : <MapIcon className="h-4 w-4 shrink-0 text-green-700" />}
+                    {L.type === 'RASTER' ? <FileText className="h-4 w-4 shrink-0 text-amber-400" /> : <MapIcon className="h-4 w-4 shrink-0 text-emerald-300" />}
                     <div className="min-w-0 flex-1">
                       <p className={`font-medium truncate ${hiddenLayers.has(L.id) ? 'line-through text-muted-foreground' : ''}`}>{L.name}</p>
                       <p className="text-[11px] text-muted-foreground">{L.type === 'RASTER' ? 'PDF map' : 'GeoJSON'} · {Math.max(1, Math.round(L.sizeBytes / 1024))} KB</p>
@@ -553,7 +553,7 @@ export default function PetaPage() {
                       {hiddenLayers.has(L.id) ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                     </Button>
                     {isAdmin && (
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700" aria-label="Hapus" onClick={() => deleteLayer(L)}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-300" aria-label="Hapus" onClick={() => deleteLayer(L)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
@@ -563,7 +563,7 @@ export default function PetaPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-green-100">
+          <Card className="border-emerald-500/20">
             <CardContent className="p-4 space-y-2">
               <p className="text-sm font-semibold">Keterangan</p>
               <div className="grid grid-cols-2 gap-1.5 text-xs">
@@ -589,7 +589,7 @@ export default function PetaPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-green-100">
+          <Card className="border-emerald-500/20">
             <CardContent className="p-4 space-y-1 text-xs text-muted-foreground">
               <p className="text-sm font-semibold text-foreground">Ringkasan tampilan</p>
               <p>Transaksi tampil: <b className="text-foreground">{records.length.toLocaleString('id-ID')}{truncated ? ' (dipotong)' : ''}</b></p>
