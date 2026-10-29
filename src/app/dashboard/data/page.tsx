@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/table'
 import {
   Download, Link2, Search, RefreshCw, Trash2, Eye, ChevronLeft, ChevronRight, Copy,
-  FileSpreadsheet, MapPin, Camera, Filter, MoreVertical, ClipboardList, BarChart3, ListTree,
+  FileSpreadsheet, MapPin, Camera, Filter, MoreVertical, ClipboardList, BarChart3, ListTree, Upload,
 } from 'lucide-react'
 import { jsonFetch } from '@/lib/api'
 import { buildWorkbook, downloadWorkbook, type ExcelSheetImage, type ExcelWorksheet } from '@/lib/excel-client'
@@ -286,6 +286,8 @@ export default function DataPage() {
   const [shares, setShares] = useState<ShareItem[]>([])
   const [facets, setFacets] = useState<Facets>({ estate: [], kebun: [], afdeling: [], blok: [], pemeriksa: [] })
   const [exporting, setExporting] = useState(false)
+  const [mengimpor, setMengimpor] = useState(false)
+  const fileImporRef = useRef<HTMLInputElement>(null)
   const [rekapRecords, setRekapRecords] = useState<Record<string, unknown>[]>([])
   const [masterMap, setMasterMap] = useState<Map<string, { luas: number | null; pokok: number | null }>>(new Map())
 
@@ -360,6 +362,86 @@ export default function DataPage() {
   function applyFilters() {
     setPage(1)
     setApplied({ ...filters })
+  }
+
+  /** ---- IMPOR JSON hasil "Transfer Data Antar HP" aplikasi Cek Blok ----
+   * Format berkas: {app:'cekblok-transfer', v:1, perangkat, records:[...]}
+   * FOTO TEMUAN IKUT TERIMPOR (tersimpan base64 di dalam JSON) — keunggulan
+   * dibanding impor Excel. Aman diimpor berulang: isi sama persis = dilewati,
+   * isi berubah (mis. dulu tanpa foto, kini ada) = diperbarui di server.
+   * Berkas besar dipotong per ±3 MB agar aman dari batas body server. */
+  async function imporJson(files: File[]) {
+    setMengimpor(true)
+    const idToast = toast.loading('Membaca berkas…')
+    try {
+      const perangkatSet = new Set<string>()
+      const semua: Record<string, unknown>[] = []
+      const rusak: string[] = []
+      for (const f of files) {
+        let j: { app?: string; perangkat?: string; records?: unknown[] } | null = null
+        try { j = JSON.parse(await f.text()) } catch { j = null }
+        if (!j || j.app !== 'cekblok-transfer' || !Array.isArray(j.records)) {
+          rusak.push(f.name)
+          continue
+        }
+        if (j.perangkat) perangkatSet.add(j.perangkat)
+        for (const r of j.records as Record<string, unknown>[]) {
+          if (r && typeof r === 'object' && (r.blok || r.tanggal)) semua.push(r)
+        }
+      }
+      if (!semua.length) {
+        throw new Error(rusak.length === files.length
+          ? 'Tidak ada berkas yang dikenali — ini harusnya JSON hasil menu "Transfer Data Antar HP" di aplikasi (nama berkas dimulai "CekBlok_")'
+          : 'Tidak ada transaksi yang bisa dibaca dari berkas ini')
+      }
+      if (rusak.length) {
+        toast.info(`${rusak.length} berkas dilewati (bukan berkas transfer): ${rusak.join(', ')}`, { id: idToast, duration: 8000 })
+      }
+      const nFoto = semua.reduce((s, r) => s + hitungFoto({ record: r }), 0)
+      const perangkat = [...perangkatSet].join(', ') || 'IMPOR-JSON'
+
+      // potong per ±3 MB (batas ukuran body serverless ±4,5 MB) dan maks 1000
+      // transaksi per kirim (batas API)
+      const UKURAN = 3 * 1024 * 1024
+      const MAKS_REC = 1000
+      const bagian: Record<string, unknown>[][] = []
+      let cur: Record<string, unknown>[] = []
+      let sz = 0
+      for (const r of semua) {
+        const s = JSON.stringify(r)
+        if (cur.length && (sz + s.length > UKURAN || cur.length >= MAKS_REC)) { bagian.push(cur); cur = []; sz = 0 }
+        cur.push(r); sz += s.length
+      }
+      if (cur.length) bagian.push(cur)
+
+      let diterima = 0
+      let baru = 0
+      let duplikat = 0
+      let diperbarui = 0
+      for (let i = 0; i < bagian.length; i++) {
+        toast.loading(`Mengimpor bagian ${i + 1} dari ${bagian.length}…`, { id: idToast })
+        const res = await fetch('/api/data/impor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ app: 'cekblok-transfer', v: 1, perangkat, records: bagian[i] }),
+        })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok || !d.ok) throw new Error(d.error || `Impor gagal (bagian ${i + 1})`)
+        diterima += Number(d.diterima || 0)
+        baru += Number(d.baru || 0)
+        duplikat += Number(d.duplikat || 0)
+        diperbarui += Number(d.diperbarui || 0)
+      }
+      toast.success(
+        `Impor selesai: ${baru} transaksi baru${diperbarui ? `, ${diperbarui} diperbarui (mis. kini dengan foto)` : ''}, ${duplikat} sudah ada (dilewati) — dari ${diterima} transaksi, ${nFoto} foto ikut terimpor.`,
+        { id: idToast, duration: 12000 }
+      )
+      load(); loadRekap()
+    } catch (e) {
+      toast.error(String((e as Error).message || e), { id: idToast })
+    } finally {
+      setMengimpor(false)
+    }
   }
 
   /** ---- EKSPOR XLSX sama seperti aplikasi (Rekap + Detail Temuan + foto) ----
@@ -602,6 +684,9 @@ export default function DataPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimpor} onClick={() => fileImporRef.current?.click()} title="Impor berkas JSON hasil menu 'Transfer Data Antar HP' di aplikasi (nama berkas dimulai CekBlok_). FOTO TEMUAN IKUT TERIMPOR. Data yang sudah ada otomatis dilewati / diperbarui — aman diulang. Bisa pilih beberapa berkas sekaligus.">
+            <Upload className="h-4 w-4 mr-1.5" /> {mengimpor ? 'Mengimpor…' : 'Impor JSON (HP)'}
+          </Button>
           <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" onClick={() => setExportOpen(true)}>
             <Download className="h-4 w-4 mr-1.5" /> Unduh Excel / JSON
           </Button>
@@ -1379,6 +1464,16 @@ export default function DataPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* input berkas impor JSON (tersembunyi, dibuka tombol Impor JSON) */}
+      <input
+        ref={fileImporRef}
+        type="file"
+        accept=".json,application/json"
+        multiple
+        className="hidden"
+        onChange={(e) => { const fs = Array.from(e.target.files || []); e.target.value = ''; if (fs.length) void imporJson(fs) }}
+      />
 
       {/* Dialog Galeri Foto (dibuka dari kolom Foto di tabel Hasil Temuan) */}
       <Dialog open={!!galleryId} onOpenChange={(o) => !o && setGalleryId(null)}>
