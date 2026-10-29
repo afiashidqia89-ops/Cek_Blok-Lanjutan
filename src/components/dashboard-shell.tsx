@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Home, ClipboardList, Map, Sprout, Users, KeyRound, Settings, LogOut,
-  Menu, BarChart3, Download, ScrollText, Search, Bell, ChevronDown, TreePalm,
+  Menu, BarChart3, ScrollText, Search, Bell, ChevronDown,
   MapPin, FileDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -51,18 +52,17 @@ const NAV_GRUP: { judul?: string; items: NavItem[] }[] = [
     ],
   },
   {
+    judul: 'Laporan',
+    items: [
+      { href: '/dashboard/laporan', label: 'Rekap & Analitik', icon: BarChart3, akses: 'all' },
+    ],
+  },
+  {
     judul: 'Data Master',
     items: [
       // Data Master (estate/kebun/afdeling/blok) — super admin
       { href: '/dashboard/data-master', label: 'Estate & Kebun', icon: Sprout, akses: 'super' },
       { href: '/dashboard/users', label: 'Pengguna', icon: Users, akses: 'admin' },
-    ],
-  },
-  {
-    judul: 'Laporan',
-    items: [
-      { href: '/dashboard/laporan', label: 'Rekap & Analitik', icon: BarChart3, akses: 'all' },
-      { href: '/dashboard/data?ekspor=1', label: 'Ekspor Data', icon: Download, akses: 'all', aktif: 'ekspor' },
     ],
   },
   {
@@ -81,37 +81,16 @@ function bolehLihat(akses: NavItem['akses'], role: Role): boolean {
   return role === 'SUPERADMIN'
 }
 
-/** Logo daun sawit "HPI Sustainable Palm Oil" (SVG inline, mirip desain) */
-export function LogoHPI({ className }: { className?: string }) {
+/** Logo resmi HPI Sustainable Palm Oil — tampilan bulat (rounded), gambar asli tanpa diubah */
+export function LogoBulat({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 48 48" className={className} fill="none" aria-hidden="true">
-      <path d="M24 45 C24 32 23.4 22 22.6 15" stroke="#14532d" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M23 16 C14 15 8 19.5 5 27 C13.5 26.5 20 23 23 16Z" fill="#16a34a" />
-      <path d="M23.4 15.5 C32 13.6 39 17 42.6 24 C34.4 24.6 27.4 21.6 23.4 15.5Z" fill="#15803d" />
-      <path d="M23 15 C20.5 8.5 21.5 4 24.5 1.6 C28 5 27.6 10.6 24.4 15.2Z" fill="#22c55e" />
-      <path d="M24 17 C29.5 11.6 36 10.6 41 12.6 C37.4 18.6 30 20.6 24 17Z" fill="#16a34a" />
-      <path d="M23.6 17.4 C18 12.4 11.6 11.8 7 14 C10.8 19.8 18 21.2 23.6 17.4Z" fill="#15803d" />
-    </svg>
-  )
-}
-
-function LogoLockup({ subtitle = false }: { subtitle?: boolean }) {
-  return (
-    <span className="flex items-center gap-2.5">
-      <LogoHPI className="h-9 w-9 shrink-0" />
-      <span className="leading-none">
-        <span className="block font-serif text-[22px] font-bold italic tracking-tight text-emerald-800">
-          HPI
-        </span>
-        {subtitle && (
-          <span className="block text-[8.5px] font-bold uppercase leading-[1.15] tracking-[0.14em] text-emerald-700">
-            Sustainable
-            <br />
-            Palm Oil
-          </span>
-        )}
-      </span>
-    </span>
+    <Image
+      src="/logo-hpi.png"
+      alt="Logo HPI Sustainable Palm Oil"
+      width={256}
+      height={256}
+      className={cn('shrink-0 select-none object-cover', className)}
+    />
   )
 }
 
@@ -248,11 +227,11 @@ export default function DashboardShell({
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="px-3 pb-2 pt-1">
-        <LogoLockup subtitle />
+        <LogoBulat className="h-12 w-12 rounded-full shadow-sm ring-1 ring-emerald-600/25" />
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto pb-2">{NavLinks(pathname, user.role, tabParam, eksporParam)}</nav>
       <div className="relative mt-2 overflow-hidden rounded-xl border border-emerald-600/15 bg-gradient-to-br from-emerald-50 to-white p-3">
-        <TreePalm className="absolute -bottom-3 -right-3 h-16 w-16 text-emerald-600/10" />
+        <LogoBulat className="absolute -bottom-5 -right-5 h-20 w-20 rounded-full opacity-10" />
         <p className="truncate text-sm font-semibold text-emerald-900">{user.name}</p>
         <p className="truncate text-xs text-muted-foreground">
           @{user.username} · {roleLabel(user.role)}
@@ -276,7 +255,7 @@ export default function DashboardShell({
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-4">
               <SheetTitle className="mb-1">
-                <LogoLockup subtitle />
+                <LogoBulat className="h-10 w-10 rounded-full ring-1 ring-emerald-600/25" />
               </SheetTitle>
               <nav className="space-y-0.5" onClick={() => setMenuOpen(false)}>
                 {NavLinks(pathname, user.role, tabParam, eksporParam, () => setMenuOpen(false))}
@@ -289,10 +268,8 @@ export default function DashboardShell({
             </SheetContent>
           </Sheet>
 
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-emerald-900">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-800 text-white shadow-sm">
-              <TreePalm className="h-5 w-5" />
-            </span>
+          <Link href="/dashboard" className="flex items-center gap-2.5 font-semibold text-emerald-900">
+            <LogoBulat className="h-9 w-9 rounded-full shadow-sm ring-1 ring-emerald-600/25" />
             <span className="truncate text-lg max-w-[150px] sm:max-w-none">{siteTitle}</span>
           </Link>
 
