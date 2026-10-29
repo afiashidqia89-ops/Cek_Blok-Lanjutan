@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/table'
 import {
   Download, Link2, Search, RefreshCw, Trash2, Eye, ChevronLeft, ChevronRight, Copy,
-  FileSpreadsheet, MapPin, Camera, Filter, Plus, MoreVertical, ClipboardList, BarChart3, ListTree,
+  FileSpreadsheet, MapPin, Camera, Filter, MoreVertical, ClipboardList, BarChart3, ListTree,
 } from 'lucide-react'
 import { jsonFetch } from '@/lib/api'
 import { buildWorkbook, downloadWorkbook, type ExcelSheetImage, type ExcelWorksheet } from '@/lib/excel-client'
@@ -74,8 +74,6 @@ function titikWarna(s: string): string {
 const LABEL_TM: Record<string, string> = { semak: 'Semak', tunasan: 'Tunasan Bermasalah', titi: 'Tidak Ada Titi Panen', kerdil: 'Pokok Kerdil', banjir: 'Areal Banjir' }
 const SATUAN: Record<string, string> = { semak: 'Ha', tunasan: 'Pkk', titi: 'Unit', kerdil: 'Pkk', banjir: 'Ha' }
 const METRICS = ['semak', 'tunasan', 'titi', 'kerdil', 'banjir'] as const
-
-const OPSI_STATUS = ['Baik', 'Perlu Perbaikan', 'Prioritas Tinggi']
 
 function num(v: unknown): number {
   const n = Number(v)
@@ -279,7 +277,6 @@ export default function DataPage() {
 
   const [exportOpen, setExportOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  const [tambahOpen, setTambahOpen] = useState(false)
   const [detail, setDetail] = useState<DetailRow | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [galleryId, setGalleryId] = useState<string | null>(null)
@@ -297,13 +294,6 @@ export default function DataPage() {
   const [konfirmHapusTerpilih, setKonfirmHapusTerpilih] = useState(false)
   const [konfirmHapusSemua, setKonfirmHapusSemua] = useState(false)
   const [menghapus, setMenghapus] = useState(false)
-
-  // ---- tambah pemeriksaan manual ----
-  const [formTambah, setFormTambah] = useState({
-    tanggal: new Date().toISOString().slice(0, 10), pemeriksa: '', estate: '', kebun: '',
-    afdeling: '', blok: '', status: 'Baik', catatan: '',
-  })
-  const [menyimpan, setMenyimpan] = useState(false)
 
   const kbScope = me && me.role === 'USER' ? (me.kebun || '').trim() : ''
 
@@ -469,27 +459,6 @@ export default function DataPage() {
     finally { setMenghapus(false) }
   }
 
-  /** Tambah pemeriksaan manual dari web */
-  async function simpanTambah() {
-    if (!formTambah.tanggal || !formTambah.blok.trim()) {
-      toast.error('Tanggal dan kode blok wajib diisi')
-      return
-    }
-    setMenyimpan(true)
-    try {
-      const d = await jsonFetch<{ ok: boolean; kode?: string; error?: string }>('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formTambah),
-      })
-      toast.success(`Pemeriksaan tersimpan (kode ${d.kode})`)
-      setTambahOpen(false)
-      setFormTambah((f) => ({ ...f, blok: '', catatan: '' }))
-      load(); loadRekap()
-    } catch (e) { toast.error(String((e as Error).message || e)) }
-    finally { setMenyimpan(false) }
-  }
-
   const canDelete = (row: Row) => {
     if (me?.role === 'ADMIN' || me?.role === 'SUPERADMIN') return true
     if (!data?.canDeleteOwn) return false
@@ -639,32 +608,19 @@ export default function DataPage() {
           <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" onClick={() => { setShareOpen(true); setShareUrl(''); loadShares() }}>
             <Link2 className="h-4 w-4 mr-1.5" /> Tautan Berbagi
           </Button>
-          <Button onClick={() => setTambahOpen(true)} className="bg-emerald-800 hover:bg-emerald-900 text-white">
-            <Plus className="h-4 w-4 mr-1.5" /> Tambah Pemeriksaan
-          </Button>
         </div>
       </div>
 
       {/* ============ KARTU FILTER (gaya desain HPI) ============ */}
       <Card className="border-emerald-600/15">
         <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="flex items-center gap-2 text-base font-semibold text-emerald-950">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-100 text-emerald-700">
-                <Filter className="h-4 w-4" />
-              </span>
-              Filter Pemeriksaan
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10"
-              onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); setPage(1) }}
-            >
-              <RefreshCw className="h-4 w-4 mr-1.5" /> Reset Filter
-            </Button>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+          <p className="flex items-center gap-2 text-base font-semibold text-emerald-950">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-100 text-emerald-700">
+              <Filter className="h-4 w-4" />
+            </span>
+            Filter Pemeriksaan
+          </p>
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
             <div className="space-y-1.5">
               <Label htmlFor="fe">Estate</Label>
               <Select value={filters.estate || 'ALL'} onValueChange={(v) => setFilters({ ...filters, estate: v === 'ALL' ? '' : v })}>
@@ -707,28 +663,36 @@ export default function DataPage() {
                 onKeyDown={(e) => e.key === 'Enter' && applyFilters()} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="df">Periode — dari</Label>
+              <Label htmlFor="df">Dari Tanggal</Label>
               <Input id="df" type="date" value={filters.tanggalFrom} onChange={(e) => setFilters({ ...filters, tanggalFrom: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="dt">Periode — sampai</Label>
+              <Label htmlFor="dt">Sampai Tanggal</Label>
               <Input id="dt" type="date" value={filters.tanggalTo} onChange={(e) => setFilters({ ...filters, tanggalTo: e.target.value })} />
             </div>
-            <div className="space-y-1.5 xl:col-span-2">
+            <div className="space-y-1.5">
               <Label htmlFor="q">Cari</Label>
-              <Input id="q" placeholder="Kode transaksi, pemeriksa, blok…" value={filters.q}
+              <Input id="q" placeholder="Cari…" value={filters.q}
                 onChange={(e) => setFilters({ ...filters, q: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && applyFilters()} />
             </div>
-            <div className="space-y-1.5 xl:col-span-2">
+            <div className="space-y-1.5">
               <Label htmlFor="fp">Pemeriksa</Label>
-              <Input id="fp" placeholder="Nama pemeriksa" value={filters.pemeriksa} onChange={(e) => setFilters({ ...filters, pemeriksa: e.target.value })}
+              <Input id="fp" placeholder="Pemeriksa…" value={filters.pemeriksa} onChange={(e) => setFilters({ ...filters, pemeriksa: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && applyFilters()} />
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button onClick={applyFilters} className="bg-emerald-800 hover:bg-emerald-900 text-white">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" className="h-9 bg-emerald-800 px-4 hover:bg-emerald-900 text-white" onClick={applyFilters}>
               <Search className="h-4 w-4 mr-1.5" /> Tampilkan
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10"
+              onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); setPage(1) }}
+            >
+              <RefreshCw className="h-4 w-4 mr-1.5" /> Reset
             </Button>
             <div className="ml-auto text-sm text-muted-foreground">
               {data ? `${data.total.toLocaleString('id-ID')} transaksi` : '…'}
@@ -853,7 +817,7 @@ export default function DataPage() {
                     {!loading && data && data.rows.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={27} className="text-center text-muted-foreground py-10">
-                          Belum ada data pada filter ini. Kirim data dari aplikasi HP lewat menu <b>Sinkronisasi Server → Kirim Data ke Server</b>, atau tambah manual lewat tombol <b>+ Tambah Pemeriksaan</b>.
+                          Belum ada data pada filter ini. Kirim data dari aplikasi HP lewat menu <b>Sinkronisasi Server → Kirim Data ke Server</b>.
                         </TableCell>
                       </TableRow>
                     )}
@@ -1280,70 +1244,6 @@ export default function DataPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Dialog Tambah Pemeriksaan */}
-      <Dialog open={tambahOpen} onOpenChange={setTambahOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Tambah Pemeriksaan</DialogTitle>
-            <DialogDescription>
-              Isi pemeriksaan manual dari web. Kode transaksi dibuat otomatis (CB-tanggal-jam).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="tt">Tanggal *</Label>
-              <Input id="tt" type="date" value={formTambah.tanggal}
-                onChange={(e) => setFormTambah({ ...formTambah, tanggal: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tp">Pemeriksa</Label>
-              <Input id="tp" placeholder="Nama pemeriksa" value={formTambah.pemeriksa}
-                onChange={(e) => setFormTambah({ ...formTambah, pemeriksa: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="te">Estate</Label>
-              <Input id="te" value={formTambah.estate}
-                onChange={(e) => setFormTambah({ ...formTambah, estate: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tk">Kebun</Label>
-              <Input id="tk" value={formTambah.kebun}
-                onChange={(e) => setFormTambah({ ...formTambah, kebun: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ta">Afdeling</Label>
-              <Input id="ta" value={formTambah.afdeling}
-                onChange={(e) => setFormTambah({ ...formTambah, afdeling: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tb">Blok *</Label>
-              <Input id="tb" placeholder="mis. H031" value={formTambah.blok}
-                onChange={(e) => setFormTambah({ ...formTambah, blok: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ts">Hasil Pemeriksaan</Label>
-              <Select value={formTambah.status} onValueChange={(v) => setFormTambah({ ...formTambah, status: v })}>
-                <SelectTrigger id="ts"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {OPSI_STATUS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="tc">Catatan</Label>
-              <Input id="tc" value={formTambah.catatan}
-                onChange={(e) => setFormTambah({ ...formTambah, catatan: e.target.value })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTambahOpen(false)} disabled={menyimpan}>Batal</Button>
-            <Button onClick={simpanTambah} disabled={menyimpan} className="bg-emerald-800 hover:bg-emerald-900 text-white">
-              {menyimpan ? 'Menyimpan…' : 'Simpan Pemeriksaan'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Dialog Unduh Data */}
       <Dialog open={exportOpen} onOpenChange={setExportOpen}>
