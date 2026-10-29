@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts'
 import { jsonFetch } from '@/lib/api'
-import { LogoHPI } from '@/components/dashboard-shell'
+import { LogoBulat } from '@/components/dashboard-shell'
 
 interface StatsData {
   role: 'SUPERADMIN' | 'ADMIN' | 'USER'
@@ -174,15 +174,7 @@ export default function DashboardHome() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/35 via-transparent to-emerald-950/25" />
         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-right drop-shadow-lg sm:right-8">
-          <div className="flex items-center justify-end gap-3">
-            <LogoHPI className="h-12 w-12 sm:h-16 sm:w-16 drop-shadow" />
-            <div className="leading-none">
-              <p className="font-serif text-3xl font-bold italic text-white sm:text-4xl">HPI</p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-50 sm:text-[11px]">
-                Sustainable<br />Palm Oil
-              </p>
-            </div>
-          </div>
+          <LogoBulat className="h-16 w-16 rounded-full shadow-lg ring-2 ring-white/50 sm:h-20 sm:w-20" />
         </div>
       </div>
 
