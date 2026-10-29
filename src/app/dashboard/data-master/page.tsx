@@ -1,405 +1,472 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import {
-  Database, TrendingUp, BarChart3, Map, Layers, ArrowRight, MapPin, Camera,
-  TreePalm, ClipboardList, TriangleAlert, Leaf, Users, Eye, Layers3,
-} from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts'
+import { Upload, Download, Pencil, Trash2, Search, BookOpen, RefreshCw, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react'
 import { jsonFetch } from '@/lib/api'
-import { LogoBulat } from '@/components/dashboard-shell'
+import { parseXlsx, pickCol, buildWorkbook, downloadWorkbook } from '@/lib/excel-client'
+import GuardSuperAdmin from '@/components/guard-superadmin'
 
-interface StatsData {
-  role: 'SUPERADMIN' | 'ADMIN' | 'USER'
-  totalRecords: number
-  totalSize: number
-  records24h?: number
-  records7d?: number
-  ownRecords?: number
-  totalUsers?: number
-  activeUsers?: number
-  activeTokens?: number
-  totalBlokMaster?: number
-  masterLuas?: number
-  masterPokok?: number
-  blokDiperiksa?: number
-  scopeKebun?: string
-  tren14?: { tanggal: string; jumlah: number }[]
-  perStatus?: { status: string; jumlah: number }[]
-  perKebun?: { kebun: string; jumlah: number }[]
-  recent?: Array<{
-    id: string; tanggal: string; pemeriksa: string; blok: string; afdeling: string;
-    kebun: string; estate: string; status: string; perangkat: string;
-    createdAt: string; uploadedBy?: { username: string } | null
-  }>
-  logs?: Array<{ id: string; username: string | null; action: string; detail: string; createdAt: string }>
+interface BlokRow {
+  id: string; estate: string; kebun: string; afdeling: string; blok: string; luas: number | null; pokok: number | null
+}
+interface Facet {
+  kebun: string; estate: string; afdelings: string[]; jumlahAfdeling: number; bloks: number; luas: number; pokok: number
+}
+interface FacetsResp {
+  ok: boolean; facets: Facet[]; estates: string[]; totalBlok: number; totalKebun: number
+  totalAfdeling: number; totalEstate: number; totalLuas: number; totalPokok: number; kosong: boolean
 }
 
-export function fmtBytes(n: number): string {
-  if (!n) return '0 B'
-  const u = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  let v = n
-  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
-  return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${u[i]}`
+const fmt = (n: number) => n.toLocaleString('id-ID')
+const fmt2 = (n: number) => n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+export default function DataMasterPage() {
+  return (
+    <GuardSuperAdmin>
+      <DataMasterIsi />
+    </GuardSuperAdmin>
+  )
 }
 
-const WARNA_STATUS: Record<string, string> = {
-  BAIK: '#22c55e',
-  'PERLU PERBAIKAN': '#f59e0b',
-  'PRIORITAS TINGGI': '#ef4444',
-}
-const WARNA_LAIN = ['#34d399', '#38bdf8', '#c084fc', '#fb923c', '#94a3b8', '#2dd4bf', '#facc15', '#f472b6']
+function DataMasterIsi() {
+  const [facets, setFacets] = useState<FacetsResp | null>(null)
+  const [rows, setRows] = useState<BlokRow[] | null>(null)
+  const [total, setTotal] = useState(0)
 
-const TIP = {
-  contentStyle: {
-    background: 'rgba(255,255,255,0.97)', border: '1px solid rgba(22,101,52,0.18)',
-    borderRadius: 12, color: '#14532d', fontSize: 12, boxShadow: '0 12px 32px rgba(20,60,35,0.15)',
-  },
-  labelStyle: { color: '#166534', fontWeight: 600 },
-  itemStyle: { color: '#14532d' },
-}
+  const [fKebun, setFKebun] = useState('')
+  const [fAfd, setFAfd] = useState('')
+  const [fQ, setFQ] = useState('')
+  const [page, setPage] = useState(1)
+  const LIMIT = 200
 
-function statusColor(s: string): string {
-  const st = (s || '').toLowerCase()
-  if (st.includes('kritis') || st.includes('buruk') || st.includes('prioritas')) return 'bg-red-500/12 text-red-700'
-  if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang') || st.includes('perbaikan')) return 'bg-amber-500/15 text-amber-700'
-  if (st.includes('baik')) return 'bg-emerald-500/15 text-emerald-700'
-  if (st) return 'bg-emerald-600/10 text-emerald-800'
-  return 'bg-muted text-muted-foreground'
-}
+  const [edit, setEdit] = useState<BlokRow | null>(null)
+  const [eLuas, setELuas] = useState('')
+  const [ePokok, setEPokok] = useState('')
+  const [saving, setSaving] = useState(false)
 
-function titikWarna(s: string): string {
-  const st = (s || '').toLowerCase()
-  if (st.includes('kritis') || st.includes('buruk') || st.includes('prioritas')) return 'bg-red-500'
-  if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang') || st.includes('perbaikan')) return 'bg-amber-500'
-  if (st) return 'bg-emerald-500'
-  return 'bg-muted-foreground/40'
-}
+  const [impOpen, setImpOpen] = useState(false)
+  const [impFile, setImpFile] = useState<File | null>(null)
+  const [impMode, setImpMode] = useState('merge')
+  const [impBusy, setImpBusy] = useState(false)
 
-function angkaID(n: number | null | undefined, dec = 0): string {
-  if (n == null || !Number.isFinite(n)) return '-'
-  return n.toLocaleString('id-ID', { minimumFractionDigits: dec, maximumFractionDigits: dec })
-}
+  const afdOptions = useMemo(() => {
+    if (!facets) return []
+    const src = fKebun ? facets.facets.filter((f) => f.kebun === fKebun) : facets.facets
+    return [...new Set(src.flatMap((f) => f.afdelings))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  }, [facets, fKebun])
 
-export default function DashboardHome() {
-  const [data, setData] = useState<StatsData | null>(null)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    jsonFetch<StatsData & { ok?: boolean; error?: string }>('/api/stats')
-      .then((d) => { if (!d.ok) throw new Error(d.error); setData(d) })
-      .catch((e) => setError(String((e as Error).message || e)))
+  const loadFacets = useCallback(() => {
+    jsonFetch<FacetsResp & { error?: string }>('/api/master?facets=1')
+      .then((d) => { if (!d.ok) throw new Error(d.error); setFacets(d) })
+      .catch((e) => toast.error(String((e as Error).message || e)))
   }, [])
 
-  if (error) {
-    return (
-      <Card className="border-red-500/30 bg-red-500/5">
-        <CardContent className="p-4 text-sm text-red-700">
-          <p className="font-semibold">Gagal memuat ringkasan</p>
-          <p className="mt-1 text-red-600">{error}</p>
-          <Button size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-700 hover:bg-red-500/10" onClick={() => location.reload()}>
-            Muat Ulang
-          </Button>
-        </CardContent>
-      </Card>
-    )
+  const loadRows = useCallback(() => {
+    setRows(null)
+    const p = new URLSearchParams({ page: String(page), limit: String(LIMIT) })
+    if (fKebun) p.set('kebun', fKebun)
+    if (fAfd) p.set('afdeling', fAfd)
+    if (fQ.trim()) p.set('q', fQ.trim())
+    jsonFetch<{ ok: boolean; error?: string; rows: BlokRow[]; total: number }>(`/api/master?${p}`)
+      .then((d) => { if (!d.ok) throw new Error(d.error); setRows(d.rows); setTotal(d.total) })
+      .catch((e) => toast.error(String((e as Error).message || e)))
+  }, [fKebun, fAfd, fQ, page])
+
+  useEffect(() => { loadFacets() }, [loadFacets])
+  useEffect(() => { loadRows() }, [loadRows])
+
+  async function simpanEdit() {
+    if (!edit) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/master/${edit.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ luas: eLuas === '' ? null : eLuas, pokok: ePokok === '' ? null : ePokok }),
+      })
+      const d = await res.json()
+      if (!res.ok || !d.ok) { toast.error(d.error || 'Gagal menyimpan'); return }
+      toast.success(`Blok ${edit.blok} diperbarui`)
+      setEdit(null); loadRows(); loadFacets()
+    } finally { setSaving(false) }
   }
-  if (!data) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-52 w-full rounded-2xl" />
-        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
-        </div>
-        <div className="grid gap-6 lg:grid-cols-5">
-          <Skeleton className="h-64 w-full rounded-xl lg:col-span-3" />
-          <Skeleton className="h-64 w-full rounded-xl lg:col-span-2" />
-        </div>
-      </div>
-    )
+
+  async function hapusBlok(b: BlokRow) {
+    if (!confirm(`Hapus blok ${b.kebun} / Afd ${b.afdeling} / ${b.blok} dari data master?`)) return
+    const res = await fetch(`/api/master/${b.id}`, { method: 'DELETE' })
+    const d = await res.json()
+    if (!res.ok || !d.ok) { toast.error(d.error || 'Gagal menghapus'); return }
+    toast.success('Blok dihapus')
+    loadRows(); loadFacets()
   }
 
-  const adminish = data.role !== 'USER'
-  const superadmin = data.role === 'SUPERADMIN'
-  const scoped = (data.scopeKebun || '').trim()
+  async function muatBawaan() {
+    const f = facets
+    const ada = f && !f.kosong
+    if (ada && !confirm(`Data master sudah berisi ${fmt(f!.totalBlok)} blok.\nMuat DB Aresta bawaan akan MENGGABUNGKAN/memperbarui ${fmt(6041)} blok bawaan aplikasi. Lanjutkan?`)) return
+    if (!ada && !confirm('Muat DB Aresta bawaan aplikasi (6.041 blok: estate, kebun, afdeling, luas, jumlah pokok) ke server?')) return
+    setImpBusy(true)
+    try {
+      const res = await fetch('/api/master', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sumber: 'bawaan', mode: 'merge' }),
+      })
+      const d = await res.json()
+      if (!res.ok || !d.ok) { toast.error(d.error || 'Gagal memuat'); return }
+      toast.success(`DB Aresta bawaan dimuat: ${fmt(d.masuk)} blok`)
+      loadRows(); loadFacets()
+    } finally { setImpBusy(false) }
+  }
 
-  const tautan = [
-    { href: '/dashboard/laporan', i: BarChart3, t: 'Rekap & Analitik', d: 'Tren, status, dan rekap per kebun/afdeling' },
-    { href: '/dashboard/data', i: Database, t: 'Data Pemeriksaan', d: 'Rekap & hasil temuan, unggah Excel' },
-    { href: '/dashboard/peta', i: Map, t: 'Peta Blok', d: 'Hasil pemeriksaan di-layout ke peta' },
-    ...(superadmin ? [{ href: '/dashboard/data-master', i: Layers, t: 'Estate & Kebun', d: 'Impor XLSX, daftar blok, luas, pokok' }] : []),
-  ]
+  /** ---- IMPOR XLSX (format Excel saja, diparse di browser via ExcelJS) ----
+   * Dikirim PER KEBUN dalam beberapa permintaan kecil supaya:
+   *  - tidak pernah menabrak batas ukuran body server (413) yang dulu
+   *    menampilkan "JSON.parse: unexpected character at line 1 column 1"
+   *  - mode "Ganti kebun terkait" tetap akurat (hapus-per-kebun utuh)
+   *  - gagal di tengah jalan jelas di kebun mana, sisanya tidak diulang */
+  async function prosesImpor() {
+    if (!impFile) { toast.error('Pilih berkas Excel (.xlsx) dulu'); return }
+    if (!/\.xlsx$/i.test(impFile.name)) { toast.error('Format harus .xlsx — format Excel saja'); return }
+    setImpBusy(true)
+    try {
+      const parsed = await parseXlsx(impFile)
+      const rowsImpor = parsed.rows.map((r) => {
+        const blok = pickCol(r, ['Blok', 'Block'])
+        const kebun = pickCol(r, ['Kebun'])
+        const afdeling = pickCol(r, ['Afdeling', 'Afd', 'Divisi'])
+        if (!blok || !kebun || !afdeling) return null
+        const numF = (names: string[]) => {
+          const v = pickCol(r, names)
+          if (v === '') return null
+          const n = Number(String(v).replace(/\s/g, '').replace(',', '.'))
+          return Number.isFinite(n) ? n : null
+        }
+        return {
+          estate: pickCol(r, ['Estate', 'PT']),
+          kebun, afdeling, blok,
+          luas: numF(['Luas (Ha)', 'Luas', 'Luas ha', 'Ha']),
+          pokok: numF(['Jumlah Pokok', 'Pokok', 'Jml Pokok', 'Pkk']),
+        }
+      }).filter(Boolean) as { estate: string; kebun: string; afdeling: string; blok: string; luas: number | null; pokok: number | null }[]
+      if (!rowsImpor.length) throw new Error('Tidak ada baris valid — pastikan ada kolom Estate, Kebun, Afdeling, Blok')
 
-  const perStatus = (data.perStatus || []).slice(0, 8)
-  const totalStatus = perStatus.reduce((s, x) => s + x.jumlah, 0) || 1
+      // kelompokkan per kebun, lalu kirim bertahap
+      const perKebun = new Map<string, typeof rowsImpor>()
+      for (const r of rowsImpor) {
+        const arr = perKebun.get(r.kebun) || []
+        arr.push(r)
+        perKebun.set(r.kebun, arr)
+      }
+      const daftarKebun = [...perKebun.keys()]
+      let masuk = 0, dihapus = 0, ditulis = 0
+      let iKebun = 0
+      for (const kb of daftarKebun) {
+        iKebun++
+        const grup = perKebun.get(kb)!
+        // kebun besar tetap dipecah jadi beberapa bagian kecil (maks 800 baris)
+        const BAGIAN = 800
+        const bagianCount = Math.ceil(grup.length / BAGIAN)
+        for (let b = 0; b < bagianCount; b++) {
+          const potongan = grup.slice(b * BAGIAN, (b + 1) * BAGIAN)
+          // mode 'replace' hanya pada BAGIAN PERTAMA tiap kebun agar baris lama
+          // kebun itu dihapus sekali, lalu bagian berikutnya digabung biasa
+          const modeKirim = impMode === 'replace' && b === 0 ? 'replace' : 'merge'
+          toast.info(
+            bagianCount > 1
+              ? `Mengunggah ${kb} (bagian ${b + 1}/${bagianCount}) — kebun ${iKebun}/${daftarKebun.length}…`
+              : `Mengunggah ${kb} (${iKebun}/${daftarKebun.length})…`
+          )
+          const d = await jsonFetch<{ ok: boolean; error?: string; masuk?: number; dihapus?: number; ditulis?: number }>('/api/master', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rows: potongan, mode: modeKirim }),
+          })
+          if (!d.ok) throw new Error(d.error || `Gagal mengimpor kebun ${kb}`)
+          masuk += d.masuk || 0
+          dihapus += d.dihapus || 0
+          ditulis += d.ditulis || 0
+        }
+      }
+      toast.success(
+        `Impor selesai: ${fmt(masuk)} blok${ditulis ? ` (${fmt(ditulis)} ditulis)` : ''}${dihapus ? `, ${fmt(dihapus)} baris lama diganti` : ''}`
+      )
+      setImpOpen(false); setImpFile(null); loadRows(); loadFacets()
+    } catch (e) {
+      toast.error(String((e as Error).message || e))
+    } finally { setImpBusy(false) }
+  }
 
-  // ---- Kartu statistik gaya desain HPI ----
-  const totalBlok = data.totalBlokMaster ?? 0
-  const diperiksa = data.blokDiperiksa ?? 0
-  const persen = totalBlok > 0 ? Math.min(100, Math.round((diperiksa / totalBlok) * 1000) / 10) : 0
-  const perluTL = (data.perStatus || [])
-    .filter((x) => /prioritas|perbaikan|perlu|kritis|buruk/i.test(x.status))
-    .reduce((s, x) => s + x.jumlah, 0)
+  /** ---- TEMPLATE XLSX ---- */
+  async function unduhTemplate() {
+    try {
+      const wb = await buildWorkbook([{
+        name: 'Data Master',
+        columns: [
+          { header: 'Estate', key: 'estate', width: 10 }, { header: 'Kebun', key: 'kebun', width: 10 },
+          { header: 'Afdeling', key: 'afdeling', width: 10 }, { header: 'Blok', key: 'blok', width: 10 },
+          { header: 'Luas (Ha)', key: 'luas', width: 12 }, { header: 'Jumlah Pokok', key: 'pokok', width: 14 },
+        ],
+        rows: [{ estate: 'KBM', kebun: 'KBM 1', afdeling: 'A', blok: 'H031', luas: 36.8, pokok: 2573 }],
+      }])
+      await downloadWorkbook(wb, 'template_data_master.xlsx')
+      toast.success('Template Excel diunduh — isi lalu impor')
+    } catch (e) { toast.error(String((e as Error).message || e)) }
+  }
 
-  const kartu = [
-    { l: 'Total Blok', v: angkaID(totalBlok), i: TreePalm, kelas: 'bg-emerald-100 text-emerald-700' },
-    { l: 'Pemeriksaan', v: angkaID(data.totalRecords), i: ClipboardList, kelas: 'bg-sky-100 text-sky-700' },
-    { l: 'Blok Diperiksa', v: angkaID(diperiksa), i: Layers3, kelas: 'bg-emerald-100 text-emerald-700', bar: persen },
-    { l: 'Perlu Tindak Lanjut', v: angkaID(perluTL), i: TriangleAlert, kelas: 'bg-orange-100 text-orange-600' },
-    { l: 'Total Luas Areal', v: `${angkaID(data.masterLuas, 2)} Ha`, i: Leaf, kelas: 'bg-green-100 text-green-700' },
-    { l: 'Total Jumlah Pokok', v: angkaID(data.masterPokok), i: Users, kelas: 'bg-sky-100 text-sky-700' },
-  ]
+  /** ---- UNDUH EXCEL (menggantikan CSV) ---- */
+  async function unduhXlsx() {
+    toast.info('Menyiapkan berkas Excel…')
+    try {
+      const all: BlokRow[] = []
+      let p = 1
+      while (true) {
+        const qp = new URLSearchParams({ page: String(p), limit: '1000' })
+        if (fKebun) qp.set('kebun', fKebun)
+        if (fAfd) qp.set('afdeling', fAfd)
+        if (fQ.trim()) qp.set('q', fQ.trim())
+        const d = await jsonFetch<{ ok: boolean; rows: BlokRow[]; total: number; error?: string }>(`/api/master?${qp}`)
+        if (!d.ok) throw new Error(d.error)
+        all.push(...d.rows)
+        if (all.length >= d.total || !d.rows.length) break
+        p++
+      }
+      const wb = await buildWorkbook([{
+        name: 'Data Master',
+        columns: [
+          { header: 'Estate', key: 'estate', width: 10 }, { header: 'Kebun', key: 'kebun', width: 10 },
+          { header: 'Afdeling', key: 'afdeling', width: 10 }, { header: 'Blok', key: 'blok', width: 10 },
+          { header: 'Luas (Ha)', key: 'luas', width: 12 }, { header: 'Jumlah Pokok', key: 'pokok', width: 14 },
+        ],
+        rows: all.map((r) => ({ estate: r.estate, kebun: r.kebun, afdeling: r.afdeling, blok: r.blok, luas: r.luas, pokok: r.pokok })),
+      }])
+      await downloadWorkbook(wb, `data-master${fKebun ? '-' + fKebun : ''}.xlsx`)
+      toast.success(`${fmt(all.length)} blok diunduh sebagai Excel`)
+    } catch (e) { toast.error(String((e as Error).message || e)) }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
   return (
-    <div className="space-y-5">
-      {/* ===== Banner foto kebun sawit (gaya desain HPI) ===== */}
-      <div className="relative overflow-hidden rounded-2xl shadow-md shadow-emerald-900/10">
-        <Image
-          src="/banner-kebun.jpg"
-          alt="Kebun sawit"
-          width={1344}
-          height={768}
-          priority
-          className="h-44 w-full object-cover sm:h-56 lg:h-64"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/35 via-transparent to-emerald-950/25" />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-right drop-shadow-lg sm:right-8">
-          <LogoBulat className="h-16 w-16 rounded-full shadow-lg ring-2 ring-white/50 sm:h-20 sm:w-20" />
-        </div>
-      </div>
-
-      {/* Header ringkasan */}
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-emerald-950">Ringkasan</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Data Master (Blok)</h1>
           <p className="text-sm text-muted-foreground">
-            {scoped
-              ? `Lingkup data: kebun ${scoped} (sesuai penugasan akun Anda).`
-              : adminish
-                ? 'Kontrol penuh server: pengguna, data, dan sinkronisasi.'
-                : 'Data pemeriksaan Anda dan tim.'}
+            Daftar blok: estate, kebun, afdeling, luas &amp; jumlah pokok — sama dengan DB di aplikasi. Halaman ini khusus <b>Super Admin</b>. Perubahan otomatis ikut ke HP saat pengguna menekan &ldquo;Ambil Data Master&rdquo;.
           </p>
         </div>
-        <div className="flex gap-2 text-sm">
-          <Badge variant="outline" className="bg-card"><TrendingUp className="h-3 w-3 mr-1 text-emerald-600" />7 hari: {data.records7d ?? 0}</Badge>
-          <Badge variant="outline" className="bg-card"><Camera className="h-3 w-3 mr-1 text-emerald-600" />Data master: {data.totalBlokMaster != null ? data.totalBlokMaster.toLocaleString('id-ID') + ' blok' : '—'}</Badge>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={unduhXlsx}><Download className="h-4 w-4 mr-1.5" /> Unduh Excel</Button>
+          <Button variant="outline" onClick={unduhTemplate}><FileSpreadsheet className="h-4 w-4 mr-1.5" /> Template Impor</Button>
+          <Button variant="outline" onClick={() => setImpOpen(true)}><Upload className="h-4 w-4 mr-1.5" /> Impor Data (XLSX)</Button>
+          <Button onClick={muatBawaan} disabled={impBusy} className="bg-emerald-600 hover:bg-emerald-700">
+            <BookOpen className="h-4 w-4 mr-1.5" /> {impBusy ? 'Memuat…' : 'Muat DB Aresta Bawaan'}
+          </Button>
         </div>
       </div>
 
-      {/* ===== Kartu statistik (6) ===== */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        {kartu.map((k) => {
-          const Icon = k.i
-          return (
-            <Card key={k.l} className="border-emerald-600/10 py-0">
-              <CardContent className="flex h-full items-center gap-3 p-4">
-                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${k.kelas}`}>
-                  <Icon className="h-5.5 w-5.5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-medium text-muted-foreground">{k.l}</span>
-                  <span className="block truncate text-lg font-bold tabular-nums text-emerald-950">{k.v}</span>
-                  {k.bar != null && totalBlok > 0 && (
-                    <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-emerald-600/15">
-                      <span className="block h-full rounded-full bg-emerald-700" style={{ width: `${Math.max(2, k.bar)}%` }} />
-                    </span>
-                  )}
-                </span>
-              </CardContent>
-            </Card>
-          )
-        })}
+      {/* Kartu ringkasan */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {[
+          { l: 'Estate', v: facets ? fmt(facets.totalEstate) : '…' },
+          { l: 'Kebun', v: facets ? fmt(facets.totalKebun) : '…' },
+          { l: 'Afdeling', v: facets ? fmt(facets.totalAfdeling) : '…' },
+          { l: 'Blok', v: facets ? fmt(facets.totalBlok) : '…' },
+          { l: 'Luas Total (ha)', v: facets ? fmt2(facets.totalLuas) : '…' },
+          { l: 'Jumlah Pokok', v: facets ? fmt(facets.totalPokok) : '…' },
+        ].map((k) => (
+          <Card key={k.l} className="border-emerald-600/15">
+            <CardContent className="p-3">
+              <p className="text-xs text-muted-foreground">{k.l}</p>
+              <p className="text-lg font-bold text-emerald-900">{k.v}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Tautan cepat */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {tautan.map((q) => {
-          const Icon = q.i
-          return (
-            <Link
-              key={q.href}
-              href={q.href}
-              className="group flex items-center gap-3 rounded-xl border border-emerald-600/15 bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-lg hover:shadow-emerald-900/10"
-            >
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700 transition-all group-hover:bg-emerald-800 group-hover:text-white group-hover:shadow-md group-hover:shadow-emerald-900/20">
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-emerald-950">{q.t}</p>
-                <p className="truncate text-xs text-muted-foreground">{q.d}</p>
-              </div>
-              <ArrowRight className="h-4 w-4 text-emerald-600/60 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700" />
-            </Link>
-          )
-        })}
-      </div>
-
-      {/* Grafik */}
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3 border-emerald-600/15">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Tren Pemeriksaan 14 Hari</CardTitle>
-            <CardDescription>Jumlah transaksi masuk per tanggal</CardDescription>
-          </CardHeader>
-          <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.tren14 || []} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(20,83,45,0.10)" vertical={false} />
-                <XAxis dataKey="tanggal" tickFormatter={(v: string) => v.slice(5)} fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
-                <RTooltip {...TIP} formatter={(v) => [`${v} transaksi`, 'Jumlah']} labelFormatter={(l) => `Tanggal ${l}`} />
-                <Bar dataKey="jumlah" fill="#16a34a" radius={[4, 4, 0, 0]} maxBarSize={28} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2 border-emerald-600/15">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Status Blok</CardTitle>
-            <CardDescription>Distribusi kondisi blok yang diperiksa</CardDescription>
-          </CardHeader>
-          <CardContent className="h-64">
-            {perStatus.length ? (
-              <div className="flex h-full items-center gap-3">
-                <ResponsiveContainer width="55%" height="100%">
-                  <PieChart>
-                    <Pie data={perStatus} dataKey="jumlah" nameKey="status" innerRadius="62%" outerRadius="88%" paddingAngle={2}>
-                      {perStatus.map((x, i) => (
-                        <Cell key={x.status} fill={WARNA_STATUS[x.status.toUpperCase()] || WARNA_LAIN[i % WARNA_LAIN.length]} />
-                      ))}
-                    </Pie>
-                    <RTooltip {...TIP} formatter={(v, n) => [`${v} transaksi`, String(n)]} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-1.5 text-xs">
-                  {perStatus.map((x, i) => (
-                    <div key={x.status} className="flex items-center gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-sm" style={{ background: WARNA_STATUS[x.status.toUpperCase()] || WARNA_LAIN[i % WARNA_LAIN.length] }} />
-                      <span className="truncate flex-1">{x.status || '-'}</span>
-                      <span className="font-semibold tabular-nums">{Math.round((x.jumlah / totalStatus) * 100)}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="grid h-full place-items-center text-sm text-muted-foreground">Belum ada data status.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Kebun teratas + tabel terbaru */}
-      {(data.perKebun || []).length > 0 && (
-        <Card className="border-emerald-600/15">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-1.5"><MapPin className="h-4 w-4 text-emerald-600" /> Kebun Tersibuk</CardTitle>
-            <CardDescription>8 kebun dengan transaksi terbanyak</CardDescription>
-          </CardHeader>
-          <CardContent className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.perKebun} layout="vertical" margin={{ top: 0, right: 16, left: 10, bottom: 0 }}>
-                <XAxis type="number" allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="kebun" width={90} fontSize={11} tickLine={false} axisLine={false} />
-                <RTooltip {...TIP} formatter={(v) => [`${v} transaksi`, 'Jumlah']} />
-                <Bar dataKey="jumlah" fill="#15803d" radius={[0, 4, 4, 0]} maxBarSize={16} />
-              </BarChart>
-            </ResponsiveContainer>
+      {facets?.kosong && (
+        <Card className="border-amber-500/30 bg-amber-500/10">
+          <CardContent className="p-4 text-sm text-amber-700">
+            <b>Data master masih kosong.</b> Klik <b>Muat DB Aresta Bawaan</b> untuk menyalin database blok
+            dari aplikasi (6.041 blok) ke server, atau gunakan <b>Impor Data (XLSX)</b> untuk berkas Excel milik Anda.
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3 border-emerald-600/15">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Transaksi Terbaru</CardTitle>
-            <CardDescription>8 pemeriksaan terakhir yang masuk ke server</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="max-h-96 overflow-y-auto">
-              <Table>
-                <TableHeader className="sticky top-0 bg-background">
-                  <TableRow>
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Blok</TableHead>
-                    <TableHead>Pemeriksa</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Sumber</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(data.recent || []).map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="whitespace-nowrap">{r.tanggal || '-'}</TableCell>
-                      <TableCell>
-                        <span className="font-medium">{r.blok || '-'}</span>
-                        <div className="text-xs text-muted-foreground truncate max-w-[160px]">
-                          {[r.estate, r.kebun, r.afdeling].filter(Boolean).join(' / ') || '-'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{r.pemeriksa || '-'}</TableCell>
-                      <TableCell>
-                        <Badge className={`gap-1.5 border-transparent ${statusColor(r.status)}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${titikWarna(r.status)}`} />
-                          {r.status || '-'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {r.perangkat || r.uploadedBy?.username || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {!(data.recent || []).length && (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Belum ada data. Kirim data dari aplikasi atau unggah berkas Excel.</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
+      {/* Filter */}
+      <Card className="border-emerald-600/15">
+        <CardContent className="p-3">
+          <div className="flex flex-wrap items-end gap-2.5">
+            <div className="w-full sm:w-44">
+              <Label className="text-xs">Kebun</Label>
+              <Select value={fKebun || 'semua'} onValueChange={(v) => { setFKebun(v === 'semua' ? '' : v); setFAfd(''); setPage(1) }}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semua">Semua kebun</SelectItem>
+                  {facets?.facets.map((f) => (<SelectItem key={f.kebun} value={f.kebun}>{f.kebun}</SelectItem>))}
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2 border-emerald-600/15">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-1.5"><Eye className="h-4 w-4 text-emerald-600" /> Aktivitas Terakhir</CardTitle>
-            <CardDescription>{adminish ? 'Log server (admin)' : 'Catatan aktivitas Anda'}</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="max-h-96 overflow-y-auto divide-y">
-              {(data.logs || []).map((l) => (
-                <div key={l.id} className="px-4 py-2.5 text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{l.action}</span>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(l.createdAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">{l.username || 'sistem'} · {l.detail || '-'}</p>
-                </div>
-              ))}
-              {!(data.logs || []).length && (
-                <p className="py-8 text-center text-sm text-muted-foreground">Belum ada aktivitas.</p>
-              )}
+            <div className="w-full sm:w-36">
+              <Label className="text-xs">Afdeling</Label>
+              <Select value={fAfd || 'semua'} onValueChange={(v) => { setFAfd(v === 'semua' ? '' : v); setPage(1) }}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semua">Semua</SelectItem>
+                  {afdOptions.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}
+                </SelectContent>
+              </Select>
             </div>
-            {adminish && (
-              <div className="border-t p-3">
-                <Link href="/dashboard/settings?tab=log" className="text-sm font-medium text-emerald-700 hover:underline">
-                  Lihat semua log →
-                </Link>
+            <div className="w-full sm:w-48">
+              <Label className="text-xs">Cari blok</Label>
+              <div className="relative mt-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input value={fQ} onChange={(e) => { setFQ(e.target.value); setPage(1) }} placeholder="mis. H031" className="pl-8" />
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+            <Button variant="outline" size="sm" className="h-9" onClick={() => { loadRows(); loadFacets() }}>
+              <RefreshCw className="h-4 w-4 mr-1.5" /> Segarkan
+            </Button>
+            <span className="ml-auto self-center text-sm text-muted-foreground">{facets ? `${fmt(total)} blok (hal. ${page}/${totalPages})` : ''}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tabel */}
+      <Card className="border-emerald-600/15">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Estate</TableHead>
+                  <TableHead>Kebun</TableHead>
+                  <TableHead>Afdeling</TableHead>
+                  <TableHead>Blok</TableHead>
+                  <TableHead className="text-right">Luas (ha)</TableHead>
+                  <TableHead className="text-right">Jumlah Pokok</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {!rows && Array.from({ length: 8 }).map((_, i) => (
+                  <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => (<TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>))}</TableRow>
+                ))}
+                {rows?.length === 0 && (
+                  <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    Tidak ada blok pada filter ini.
+                  </TableCell></TableRow>
+                )}
+                {rows?.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>{r.estate}</TableCell>
+                    <TableCell><Badge variant="secondary" className="bg-emerald-600/10 text-emerald-900">{r.kebun}</Badge></TableCell>
+                    <TableCell>{r.afdeling}</TableCell>
+                    <TableCell className="font-medium">{r.blok}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.luas == null ? '-' : fmt2(r.luas)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.pokok == null ? '-' : fmt(r.pokok)}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Ubah"
+                        onClick={() => { setEdit(r); setELuas(r.luas == null ? '' : String(Math.round(r.luas * 100) / 100)); setEPokok(r.pokok == null ? '' : String(r.pokok)) }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" aria-label="Hapus" onClick={() => hapusBlok(r)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /> Sebelumnya</Button>
+          <span className="text-sm text-muted-foreground">Halaman {page} dari {totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Berikutnya <ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      )}
+
+      {/* Dialog edit blok */}
+      <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ubah Blok {edit?.blok}</DialogTitle>
+            <DialogDescription>
+              {edit ? `${edit.estate} / Kebun ${edit.kebun} / Afdeling ${edit.afdeling}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="lu">Luas (ha)</Label>
+              <Input id="lu" type="number" step="0.01" min="0" value={eLuas} onChange={(e) => setELuas(e.target.value)} placeholder="mis. 36.8" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pk">Jumlah pokok</Label>
+              <Input id="pk" type="number" step="1" min="0" value={ePokok} onChange={(e) => setEPokok(e.target.value)} placeholder="mis. 2573" />
+            </div>
+            <p className="text-xs text-muted-foreground">Kosongkan bila tidak ada data. Perubahan otomatis tampil di HP setelah &ldquo;Ambil Data Master&rdquo;.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEdit(null)}>Batal</Button>
+            <Button onClick={simpanEdit} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">{saving ? 'Menyimpan…' : 'Simpan'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog impor XLSX */}
+      <Dialog open={impOpen} onOpenChange={setImpOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Impor Data Master (Excel)</DialogTitle>
+            <DialogDescription>
+              Format <b>.xlsx saja</b>. Kolom: <b>Estate, Kebun, Afdeling, Blok, Luas (Ha), Jumlah Pokok</b>.
+              Belum punya berkasnya? Unduh template, isi, lalu unggah.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="impfile">Berkas Excel (.xlsx)</Label>
+              <Input id="impfile" type="file" accept=".xlsx" onChange={(e) => setImpFile(e.target.files?.[0] || null)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cara impor</Label>
+              <Select value={impMode} onValueChange={setImpMode}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="merge">Gabungkan / perbarui (tidak menghapus)</SelectItem>
+                  <SelectItem value="replace">Ganti kebun terkait (hapus dulu baris kebun di data baru)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImpOpen(false)}>Batal</Button>
+            <Button onClick={prosesImpor} disabled={impBusy || !impFile} className="bg-emerald-600 hover:bg-emerald-700">
+              {impBusy ? 'Memproses…' : 'Impor'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
