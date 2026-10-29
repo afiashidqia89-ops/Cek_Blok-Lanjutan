@@ -60,7 +60,7 @@ function LoginForm() {
               alt="Logo Cek Blok"
               width={72}
               height={72}
-              className="mx-auto rounded-2xl shadow-xl shadow-emerald-900/20 ring-1 ring-emerald-600/30"
+              className="mx-auto rounded-full shadow-xl shadow-emerald-900/20 ring-1 ring-emerald-600/30"
             />
             <h1 className="bg-gradient-to-r from-emerald-700 to-emerald-500 bg-clip-text text-2xl font-bold tracking-tight text-transparent">Cek Blok Server</h1>
             <p className="text-sm text-muted-foreground">
