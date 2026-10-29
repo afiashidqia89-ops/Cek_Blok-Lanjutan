@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
@@ -154,6 +155,7 @@ export default function UsersPage() {
   const [fKebun, setFKebun] = useState<string[]>([])
   const [fAfd, setFAfd] = useState<string[]>([])
   const [adding, setAdding] = useState(false)
+  const [errTambah, setErrTambah] = useState('')
 
   const [edit, setEdit] = useState<UserRow | null>(null)
   const [eName, setEName] = useState('')
@@ -185,18 +187,36 @@ export default function UsersPage() {
   }, [load])
 
   async function addUser() {
+    setErrTambah('')
+    // samakan otomatis: huruf kecil + tanpa spasi (aturan yang sama dengan server)
+    const uname = fUsername.trim().toLowerCase()
+    if (!/^[a-z0-9._-]{3,32}$/.test(uname)) {
+      setErrTambah('Username harus 3-32 karakter: huruf kecil, angka, titik, garis bawah/strip — tanpa spasi.')
+      return
+    }
+    if (fPassword.length < 6) {
+      setErrTambah('Password minimal 6 karakter.')
+      return
+    }
     setAdding(true)
     try {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: fUsername, name: fName, password: fPassword, role: fRole, estate: fEstate, kebun: fKebun, afdeling: fAfd }),
+        body: JSON.stringify({ username: uname, name: fName, password: fPassword, role: fRole, estate: fEstate, kebun: fKebun, afdeling: fAfd }),
       })
       const d = await res.json()
-      if (!res.ok || !d.ok) { toast.error(d.error || 'Gagal membuat user'); return }
-      toast.success(`Pengguna ${fUsername} terdaftar`)
+      if (!res.ok || !d.ok) {
+        const pesan = d.error || 'Gagal membuat user'
+        setErrTambah(pesan)
+        toast.error(pesan)
+        return
+      }
+      toast.success(`Pengguna ${uname} terdaftar`)
       setAddOpen(false); setFUsername(''); setFName(''); setFPassword(''); setFRole('USER'); setFEstate([]); setFKebun([]); setFAfd([])
       load()
+    } catch {
+      setErrTambah('Koneksi gagal — periksa internet lalu coba lagi.')
     } finally { setAdding(false) }
   }
 
@@ -241,7 +261,7 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold tracking-tight">Pengguna</h1>
           <p className="text-sm text-muted-foreground">Daftarkan akun + ceklis estate/kebun/afdelingnya — data web &amp; HP otomatis menyesuaikan.</p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button onClick={() => { setErrTambah(''); setAddOpen(true) }} className="bg-emerald-600 hover:bg-emerald-700">
           <UserPlus className="h-4 w-4 mr-1.5" /> Daftarkan Pengguna
         </Button>
       </div>
@@ -317,7 +337,8 @@ export default function UsersPage() {
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <Label htmlFor="nu">Username</Label>
-                <Input id="nu" value={fUsername} onChange={(e) => setFUsername(e.target.value)} placeholder="mis. pengecek1" />
+                <Input id="nu" value={fUsername} onChange={(e) => setFUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))} placeholder="mis. pengecek1" />
+                <p className="text-[11px] text-muted-foreground">Huruf kecil/angka, 3-32 karakter, tanpa spasi (otomatis diubah ke huruf kecil).</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="nn">Nama tampilan</Label>
@@ -326,6 +347,12 @@ export default function UsersPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="np">Password</Label>
                 <Input id="np" type="password" value={fPassword} onChange={(e) => setFPassword(e.target.value)} />
+                <p className={cn(
+                  'text-[11px]',
+                  fPassword.length > 0 && fPassword.length < 6 ? 'font-medium text-red-600' : 'text-muted-foreground'
+                )}>
+                  Minimal 6 karakter{fPassword.length > 0 && fPassword.length < 6 ? ` — baru ${fPassword.length} karakter, tambah lagi` : ''}.
+                </p>
               </div>
             </div>
             <div>
@@ -344,9 +371,14 @@ export default function UsersPage() {
               </select>
             </div>
           </div>
+          {errTambah && (
+            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-600">
+              {errTambah}
+            </p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Batal</Button>
-            <Button onClick={addUser} disabled={adding || !fUsername || fPassword.length < 6} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={addUser} disabled={adding || !fUsername.trim()} className="bg-emerald-600 hover:bg-emerald-700">
               {adding ? 'Menyimpan…' : 'Daftarkan'}
             </Button>
           </DialogFooter>
