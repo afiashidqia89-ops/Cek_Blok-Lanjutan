@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Home, ClipboardList, Map, Sprout, Users, KeyRound, Settings, LogOut,
-  Menu, BarChart3, ScrollText, Search, Bell, ChevronDown,
+  Menu, BarChart3, Search, Bell, ChevronDown,
   MapPin, FileDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -35,7 +35,7 @@ interface NavItem {
   /** akses: 'all' = semua, 'admin' = admin + super admin, 'super' = super admin saja */
   akses: 'all' | 'admin' | 'super'
   /** cara menentukan item aktif */
-  aktif?: 'default' | 'log' | 'ekspor'
+  aktif?: 'default' | 'ekspor'
 }
 
 const NAV_GRUP: { judul?: string; items: NavItem[] }[] = [
@@ -69,8 +69,8 @@ const NAV_GRUP: { judul?: string; items: NavItem[] }[] = [
     judul: 'Pengaturan',
     items: [
       { href: '/dashboard/tokens', label: 'Token Perangkat', icon: KeyRound, akses: 'super' },
+      // Log Aktivitas bukan menu tersendiri — ada di dalam halaman Pengaturan (tab "Log Aktivitas")
       { href: '/dashboard/settings', label: 'Pengaturan', icon: Settings, akses: 'super', aktif: 'default' },
-      { href: '/dashboard/settings?tab=log', label: 'Log Aktivitas', icon: ScrollText, akses: 'super', aktif: 'log' },
     ],
   },
 ]
@@ -94,12 +94,11 @@ export function LogoBulat({ className }: { className?: string }) {
   )
 }
 
-function isActiveItem(n: NavItem, pathname: string, tabParam: string, eksporParam: string): boolean {
+function isActiveItem(n: NavItem, pathname: string, eksporParam: string): boolean {
   const base = n.href.split('?')[0]
-  if (n.aktif === 'log') return pathname === base && tabParam === 'log'
   if (n.aktif === 'ekspor') return pathname === base && eksporParam === '1'
   if (n.aktif === 'default' && base === '/dashboard/data') return pathname === base && eksporParam !== '1'
-  if (n.aktif === 'default' && base === '/dashboard/settings') return pathname === base && tabParam !== 'log'
+  if (n.aktif === 'default' && base === '/dashboard/settings') return pathname === base
   if (base === '/dashboard') return pathname === '/dashboard'
   return pathname === base || (pathname.startsWith(base + '/') && base !== '/dashboard')
 }
@@ -107,7 +106,6 @@ function isActiveItem(n: NavItem, pathname: string, tabParam: string, eksporPara
 function NavLinks(
   pathname: string,
   role: Role,
-  tabParam: string,
   eksporParam: string,
   onKlik?: () => void
 ) {
@@ -122,7 +120,7 @@ function NavLinks(
           </p>
         )}
         {items.map((n) => {
-          const active = isActiveItem(n, pathname, tabParam, eksporParam)
+          const active = isActiveItem(n, pathname, eksporParam)
           const Icon = n.icon
           return (
             <Link
@@ -191,14 +189,12 @@ export default function DashboardShell({
   const pathname = usePathname()
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [tabParam, setTabParam] = useState('')
   const [eksporParam, setEksporParam] = useState('')
   const [cari, setCari] = useState('')
   const [bell, setBell] = useState<StatBell | null>(null)
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search)
-    setTabParam(sp.get('tab') || '')
     setEksporParam(sp.get('ekspor') || '')
   }, [pathname])
 
@@ -229,7 +225,7 @@ export default function DashboardShell({
       <div className="px-3 pb-2 pt-1">
         <LogoBulat className="h-12 w-12 rounded-full shadow-sm ring-1 ring-emerald-600/25" />
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto pb-2">{NavLinks(pathname, user.role, tabParam, eksporParam)}</nav>
+      <nav className="flex-1 space-y-0.5 overflow-y-auto pb-2">{NavLinks(pathname, user.role, eksporParam)}</nav>
       <div className="relative mt-2 overflow-hidden rounded-xl border border-emerald-600/15 bg-gradient-to-br from-emerald-50 to-white p-3">
         <LogoBulat className="absolute -bottom-5 -right-5 h-20 w-20 rounded-full opacity-10" />
         <p className="truncate text-sm font-semibold text-emerald-900">{user.name}</p>
@@ -258,7 +254,7 @@ export default function DashboardShell({
                 <LogoBulat className="h-10 w-10 rounded-full ring-1 ring-emerald-600/25" />
               </SheetTitle>
               <nav className="space-y-0.5" onClick={() => setMenuOpen(false)}>
-                {NavLinks(pathname, user.role, tabParam, eksporParam, () => setMenuOpen(false))}
+                {NavLinks(pathname, user.role, eksporParam, () => setMenuOpen(false))}
               </nav>
               <div className="mt-3 rounded-xl border border-emerald-600/15 bg-emerald-50 p-3">
                 <p className="truncate text-sm font-semibold text-emerald-900">{user.name}</p>
