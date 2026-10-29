@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/table'
 import {
   Download, Link2, Search, RefreshCw, Trash2, Eye, ChevronLeft, ChevronRight, Copy,
-  FileSpreadsheet, MapPin, Camera, Filter, MoreVertical, ClipboardList, BarChart3, ListTree, Upload,
+  FileSpreadsheet, MapPin, Camera, Filter, MoreVertical, ClipboardList, ListTree, Upload,
 } from 'lucide-react'
 import { jsonFetch } from '@/lib/api'
 import { buildWorkbook, downloadWorkbook, type ExcelSheetImage, type ExcelWorksheet } from '@/lib/excel-client'
@@ -585,57 +585,6 @@ export default function DataPage() {
     }
   }, [rekapRecords])
 
-  /** Rekap per blok: agregat dari semua transaksi pada filter aktif */
-  const perBlok = useMemo(() => {
-    const map = new Map<string, {
-      blok: string; kebun: string; afdeling: string; estate: string
-      pemeriksaan: number; luas: number | null; pokok: number | null
-      terakhir: string; temuan: number
-    }>()
-    for (const r of rekapRecords) {
-      const kunci = `${String(r.kebun || '').toUpperCase()}|${String(r.afdeling || '').toUpperCase()}|${String(r.blok || '').toUpperCase()}`
-      let b = map.get(kunci)
-      if (!b) {
-        const m = masterMap.get(kunci)
-        b = {
-          blok: String(r.blok || '-'), kebun: String(r.kebun || '-'), afdeling: String(r.afdeling || '-'),
-          estate: String(r.estate || r.pt || '-'),
-          pemeriksaan: 0, luas: m?.luas ?? (r.luas != null ? Number(r.luas) : null),
-          pokok: m?.pokok ?? (r.pokok != null ? Math.round(Number(r.pokok)) : null),
-          terakhir: String(r.tanggal || ''), temuan: 0,
-        }
-        map.set(kunci, b)
-      }
-      b.pemeriksaan++
-      b.temuan += barisTemuan(r as Record<string, unknown>).length
-      const tgl = String(r.tanggal || '')
-      if (tgl && tgl > b.terakhir) b.terakhir = tgl
-    }
-    return [...map.values()].sort((a, b) => b.pemeriksaan - a.pemeriksaan)
-  }, [rekapRecords, masterMap])
-
-  /** Unduh Rekap Per Blok sebagai XLSX ringkas */
-  async function unduhPerBlok() {
-    try {
-      if (!perBlok.length) throw new Error('Tidak ada data pada filter ini')
-      const sheets: ExcelWorksheet[] = [{
-        name: 'Rekap Per Blok',
-        columns: [
-          { header: 'No', key: 'no', width: 6 }, { header: 'Estate', key: 'estate', width: 10 },
-          { header: 'Kebun', key: 'kebun', width: 10 }, { header: 'Afdeling', key: 'afdeling', width: 10 },
-          { header: 'Blok', key: 'blok', width: 10 }, { header: 'Jumlah Pemeriksaan', key: 'pemeriksaan', width: 18 },
-          { header: 'Jumlah Temuan', key: 'temuan', width: 15 }, { header: 'Luas (Ha)', key: 'luas', width: 11 },
-          { header: 'Jumlah Pokok', key: 'pokok', width: 13 }, { header: 'Terakhir Diperiksa', key: 'terakhir', width: 18 },
-        ],
-        rows: perBlok.map((b, i) => ({ no: i + 1, ...b })),
-        cellStyles: { H: { numFmt: '0.00' } },
-      }]
-      const wb = await buildWorkbook(sheets, 'Server Cek Blok')
-      await downloadWorkbook(wb, `rekap_per_blok_${new Date().toISOString().slice(0, 10)}.xlsx`)
-      toast.success(`${perBlok.length} blok diekspor`)
-    } catch (e) { toast.error(String((e as Error).message || e)) }
-  }
-
   /** Baris tabel "Hasil Temuan" — format sama dengan sheet "Detail Temuan" pada
    * ekspor Excel: satu baris per temuan / sampel / foto bukti, lengkap dengan
    * koordinat, akurasi, sumber lokasi, tautan peta dan penanda foto. */
@@ -789,7 +738,6 @@ export default function DataPage() {
       <Tabs defaultValue="pemeriksaan">
         <TabsList className="bg-emerald-600/10">
           <TabsTrigger value="pemeriksaan" className="gap-1.5"><ClipboardList className="h-4 w-4" /> Data Pemeriksaan</TabsTrigger>
-          <TabsTrigger value="perblok" className="gap-1.5"><BarChart3 className="h-4 w-4" /> Rekap Per Blok</TabsTrigger>
           <TabsTrigger value="temuan" className="gap-1.5"><ListTree className="h-4 w-4" /> Hasil Temuan</TabsTrigger>
         </TabsList>
 
@@ -1019,61 +967,6 @@ export default function DataPage() {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ============ SUB-MENU REKAP PER BLOK ============ */}
-        <TabsContent value="perblok" className="mt-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={unduhPerBlok}>
-              <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Unduh Rekap Per Blok (XLSX)
-            </Button>
-            <div className="ml-auto text-xs text-muted-foreground">
-              Satu baris per blok — jumlah pemeriksaan, temuan, luas &amp; pokok (Data Master), tanggal terakhir diperiksa.
-            </div>
-          </div>
-          <Card className="border-emerald-600/15">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-emerald-600/5 hover:bg-emerald-600/5">
-                      <TableHead className="text-right">No</TableHead>
-                      <TableHead>Estate</TableHead>
-                      <TableHead>Kebun</TableHead>
-                      <TableHead>Afdeling</TableHead>
-                      <TableHead>Blok</TableHead>
-                      <TableHead className="text-right">Pemeriksaan</TableHead>
-                      <TableHead className="text-right">Temuan</TableHead>
-                      <TableHead className="text-right">Luas (Ha)</TableHead>
-                      <TableHead className="text-right">Jumlah Pokok</TableHead>
-                      <TableHead>Terakhir Diperiksa</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {!loading && perBlok.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={10} className="text-center text-muted-foreground py-10">Belum ada data pada filter ini.</TableCell>
-                      </TableRow>
-                    )}
-                    {perBlok.map((b, i) => (
-                      <TableRow key={`${b.kebun}|${b.afdeling}|${b.blok}`}>
-                        <TableCell className="text-right text-xs text-muted-foreground">{i + 1}</TableCell>
-                        <TableCell>{b.estate}</TableCell>
-                        <TableCell>{b.kebun}</TableCell>
-                        <TableCell>{b.afdeling}</TableCell>
-                        <TableCell className="font-medium">{b.blok}</TableCell>
-                        <TableCell className="text-right tabular-nums">{b.pemeriksaan}</TableCell>
-                        <TableCell className="text-right tabular-nums">{b.temuan}</TableCell>
-                        <TableCell className="text-right tabular-nums">{b.luas != null ? b.luas.toFixed(2) : '*'}</TableCell>
-                        <TableCell className="text-right tabular-nums">{b.pokok != null ? b.pokok.toLocaleString('id-ID') : '*'}</TableCell>
-                        <TableCell className="whitespace-nowrap">{b.terakhir || '*'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
