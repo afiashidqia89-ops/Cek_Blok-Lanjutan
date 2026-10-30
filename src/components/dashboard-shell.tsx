@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  Home, ClipboardList, Map, Sprout, Users, KeyRound, Settings, LogOut,
+  Home, ClipboardList, Map, Sprout, Users, Settings, LogOut,
   Menu, BarChart3, Search, Bell, ChevronDown,
   MapPin, FileDown,
 } from 'lucide-react'
@@ -68,7 +68,7 @@ const NAV_GRUP: { judul?: string; items: NavItem[] }[] = [
   {
     judul: 'Pengaturan',
     items: [
-      { href: '/dashboard/tokens', label: 'Token Perangkat', icon: KeyRound, akses: 'super' },
+      // Token Perangkat bukan menu tersendiri — pindah ke dalam halaman Pengaturan (tab "Token Perangkat")
       // Log Aktivitas bukan menu tersendiri — ada di dalam halaman Pengaturan (tab "Log Aktivitas")
       { href: '/dashboard/settings', label: 'Pengaturan', icon: Settings, akses: 'super', aktif: 'default' },
     ],
@@ -222,16 +222,9 @@ export default function DashboardShell({
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      {/* logo di atas menu Dashboard dihilangkan atas permintaan pengguna */}
+      {/* logo di atas menu Dashboard & kartu nama pengguna dihilangkan atas permintaan pengguna —
+          identitas & tombol keluar tetap ada di pojok kanan-atas (menu avatar) */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto pt-1 pb-2">{NavLinks(pathname, user.role, eksporParam)}</nav>
-      <div className="relative mt-2 overflow-hidden rounded-xl border border-emerald-600/15 bg-gradient-to-br from-emerald-50 to-white p-3">
-        <LogoBulat className="absolute -bottom-5 -right-5 h-20 w-20 rounded-full opacity-10" />
-        <p className="truncate text-sm font-semibold text-emerald-900">{user.name}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          @{user.username} · {roleLabel(user.role)}
-        </p>
-        <div className="mt-1.5"><BadgeKebun user={user} /></div>
-      </div>
     </div>
   )
 
@@ -252,11 +245,6 @@ export default function DashboardShell({
               <nav className="space-y-0.5" onClick={() => setMenuOpen(false)}>
                 {NavLinks(pathname, user.role, eksporParam, () => setMenuOpen(false))}
               </nav>
-              <div className="mt-3 rounded-xl border border-emerald-600/15 bg-emerald-50 p-3">
-                <p className="truncate text-sm font-semibold text-emerald-900">{user.name}</p>
-                <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
-                <div className="mt-1.5"><BadgeKebun user={user} /></div>
-              </div>
             </SheetContent>
           </Sheet>
 
