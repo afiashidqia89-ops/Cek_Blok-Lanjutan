@@ -222,10 +222,8 @@ export default function DashboardShell({
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <div className="px-3 pb-2 pt-1">
-        <LogoBulat className="h-12 w-12 rounded-full shadow-sm ring-1 ring-emerald-600/25" />
-      </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto pb-2">{NavLinks(pathname, user.role, eksporParam)}</nav>
+      {/* logo di atas menu Dashboard dihilangkan atas permintaan pengguna */}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto pt-1 pb-2">{NavLinks(pathname, user.role, eksporParam)}</nav>
       <div className="relative mt-2 overflow-hidden rounded-xl border border-emerald-600/15 bg-gradient-to-br from-emerald-50 to-white p-3">
         <LogoBulat className="absolute -bottom-5 -right-5 h-20 w-20 rounded-full opacity-10" />
         <p className="truncate text-sm font-semibold text-emerald-900">{user.name}</p>
@@ -250,9 +248,7 @@ export default function DashboardShell({
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-4">
-              <SheetTitle className="mb-1">
-                <LogoBulat className="h-10 w-10 rounded-full ring-1 ring-emerald-600/25" />
-              </SheetTitle>
+              <SheetTitle className="sr-only">Menu navigasi</SheetTitle>
               <nav className="space-y-0.5" onClick={() => setMenuOpen(false)}>
                 {NavLinks(pathname, user.role, eksporParam, () => setMenuOpen(false))}
               </nav>
