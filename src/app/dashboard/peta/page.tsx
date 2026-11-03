@@ -246,8 +246,12 @@ export default function PetaPage() {
       ro.observe(cv)
       fetch('/api/auth/me').then(r => r.json()).then(d => {
         const u = d.user || null
-        setIsAdmin(u?.role === 'ADMIN')
-        setKbScope(u && u.role !== 'ADMIN' ? (u.kebun || '').trim() : '')
+        // Admin = ADMIN **atau** SUPERADMIN — sama seperti requireAdmin() di server.
+        // Sebelumnya hanya 'ADMIN' yang dianggap, sehingga akun pemilik (Super Admin)
+        // tidak melihat tombol Impor GeoJSON / Impor PDF Map sama sekali.
+        const admin = u?.role === 'ADMIN' || u?.role === 'SUPERADMIN'
+        setIsAdmin(admin)
+        setKbScope(u && !admin ? (u.kebun || '').trim() : '')
       }).catch(() => {})
       fetch('/api/data/facets').then(r => r.json()).then(d => { if (d.ok) setFacets({ kebun: d.kebun || [], afdeling: d.afdeling || [], blok: d.blok || [] }) }).catch(() => {})
       loadLayersAll()
