@@ -1,4 +1,4 @@
-'use client'
+\'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -11,7 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
-  Database, TrendingUp, BarChart3, Map, Layers, ArrowRight, MapPin, Camera,
+  TrendingUp, MapPin, Camera,
   TreePalm, ClipboardList, TriangleAlert, Leaf, Users, Eye, Layers3,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts'
@@ -130,15 +130,7 @@ export default function DashboardHome() {
   }
 
   const adminish = data.role !== 'USER'
-  const superadmin = data.role === 'SUPERADMIN'
   const scoped = (data.scopeKebun || '').trim()
-
-  const tautan = [
-    { href: '/dashboard/laporan', i: BarChart3, t: 'Rekap & Analitik', d: 'Tren, status, dan rekap per kebun/afdeling' },
-    { href: '/dashboard/data', i: Database, t: 'Data Pemeriksaan', d: 'Rekap & hasil temuan, unggah Excel' },
-    { href: '/dashboard/peta', i: Map, t: 'Peta Blok', d: 'Hasil pemeriksaan di-layout ke peta' },
-    ...(superadmin ? [{ href: '/dashboard/data-master', i: Layers, t: 'Estate & Kebun', d: 'Impor XLSX, daftar blok, luas, pokok' }] : []),
-  ]
 
   const perStatus = (data.perStatus || []).slice(0, 8)
   const totalStatus = perStatus.reduce((s, x) => s + x.jumlah, 0) || 1
@@ -217,29 +209,6 @@ export default function DashboardHome() {
                 </span>
               </CardContent>
             </Card>
-          )
-        })}
-      </div>
-
-      {/* Tautan cepat */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {tautan.map((q) => {
-          const Icon = q.i
-          return (
-            <Link
-              key={q.href}
-              href={q.href}
-              className="group flex items-center gap-3 rounded-xl border border-emerald-600/15 bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-lg hover:shadow-emerald-900/10"
-            >
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700 transition-all group-hover:bg-emerald-800 group-hover:text-white group-hover:shadow-md group-hover:shadow-emerald-900/20">
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-emerald-950">{q.t}</p>
-                <p className="truncate text-xs text-muted-foreground">{q.d}</p>
-              </div>
-              <ArrowRight className="h-4 w-4 text-emerald-600/60 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700" />
-            </Link>
           )
         })}
       </div>
