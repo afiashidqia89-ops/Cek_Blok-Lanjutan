@@ -32,7 +32,7 @@ import {
   FileSpreadsheet, MapPin, Camera, Filter, MoreVertical, ClipboardList, ListTree, Upload,
 } from 'lucide-react'
 import { jsonFetch } from '@/lib/api'
-import { buildWorkbook, downloadWorkbook, parseXlsx, pickCol, type ExcelSheetImage, type ExcelWorksheet } from '@/lib/excel-client'
+import { buildWorkbook, downloadWorkbook, parseXlsxSheets, pickCol, type ExcelSheetImage, type ExcelWorksheet } from '@/lib/excel-client'
 
 interface Row {
   id: string; kodeTransaksi: string; tanggal: string; pemeriksa: string;
@@ -447,46 +447,190 @@ export default function DataPage() {
   }
 
   /** ---- IMPOR XLSX (Data Pemeriksaan) ----
-   * Berkas Excel (.xlsx) diparse di browser (ExcelJS via lib/excel-client).
-   * Kolom wajib: Tanggal + Blok. Kolom lain opsional: Pemeriksa, Estate/PT,
-   * Kebun, Afdeling, Status, Catatan, dan temuan (Semak, Tunasan, Titi,
-   * Kerdil, Banjir). Dikirim ke /api/data/impor-xlsx yang HANYA MENAMBAH
-   * data baru — transaksi yang sudah ada di server tidak pernah ditimpa. */
+   * Membaca SEMUA sheet berkas Excel (format ekspor web/HP):
+   *  - Sheet "Rekap" (atau sheet pertama) : 1 baris = 1 transaksi. Semua kolom
+   *    dibaca: Tanggal, Pemeriksa, Estate, Kebun, Afdeling, Blok, Luas (Ha),
+   *    Jumlah Pokok, Nomor Baris Kanan/Kiri, Baris Kanan/Kiri, Ancak,
+   *    Kategori Ancak, Semak, Tunasan, Titi, Kerdil, Banjir, Status, Catatan.
+   *    Sel "*" (penanda kosong hasil ekspor) dianggap kosong.
+   *  - Sheet "Detail Temuan" (bila ada)   : baris temuan per sampel dikelompokkan
+   *    berdasarkan Kode Transaksi lalu digabung kembali ke transaksinya, lengkap
+   *    dengan koordinat; kolom foto jadi penanda "ADA" (foto asli tidak ikut di
+   *    Excel — untuk foto gunakan Impor JSON dari HP).
+   * Dikirim ke /api/data/impor-xlsx yang HANYA MENAMBAH data baru — transaksi
+   * asli dari HP yang kuncinya sama tidak pernah ditimpa. */
   async function imporXlsx(file: File) {
     setMengimporX(true)
     const idToast = toast.loading(`Membaca ${file.name}…`)
     try {
       if (!/\.xlsx$/i.test(file.name)) throw new Error('Format harus .xlsx — berkas Excel')
-      const parsed = await parseXlsx(file, 0)
-      const records: Record<string, unknown>[] = []
-      let dilewati = 0
-      for (const row of parsed.rows) {
-        const tanggal = normTanggal(row, ['tanggal', 'tgl', 'date'])
-        const blok = pickCol(row, ['blok'])
-        if (!blok && !tanggal) { dilewati++; continue }
+      const sheets = await parseXlsxSheets(file)
+      if (!sheets.length) throw new Error('Berkas Excel kosong / tidak terbaca')
+
+      // pemetaan label temuan (sheet Detail Temuan) -> kunci metrik payload
+      const labelKeKunci: Record<string, string> = {}
+      for (const k of Object.keys(LABEL_TM)) labelKeKunci[String(LABEL_TM[k]).toLowerCase()] = k
+
+      const isTemuan = (nm: string) => /temuan/i.test(nm)
+      let shRekap = sheets.find((s) => /rekap/i.test(s.name))
+      if (!shRekap) shRekap = sheets.find((s) => !isTemuan(s.name)) || sheets[0]
+      const shTemuan = sheets.find((s) => isTemuan(s.name) && s !== shRekap)
+
+      // sel kosong, "*" atau "-" dianggap kosong (penanda kosong hasil ekspor)
+      const cel = (row: Record<string, unknown>, names: string[]): string => {
+        const v = pickCol(row, names)
+        return v === '*' || v === '-' ? '' : v
+      }
+      const angkaCel = (row: Record<string, unknown>, names: string[]): number | undefined => {
+        const s = cel(row, names).replace(',', '.')
+        if (!s) return undefined
+        const n = Number(s)
+        return Number.isFinite(n) ? n : undefined
+      }
+
+      // nama header sudah dinormalisasi (huruf kecil, tanpa spasi/tanda baca):
+      // "Luas (Ha)"->luasha, "Jumlah Pokok"->jumlahpokok, "Semak (Ha)"->semakha, dst.
+      const buatRec = (row: Record<string, unknown>): Record<string, unknown> | null => {
+        const tanggalRaw = normTanggal(row, ['tanggal', 'tgl', 'date'])
+        const tanggal = tanggalRaw === '*' ? '' : tanggalRaw
+        const blok = cel(row, ['blok'])
+        const kode = cel(row, ['kodetransaksi', 'kode', 'kodetrx'])
+        if (!blok && !tanggal && !kode) return null
         const rec: Record<string, unknown> = {
           tanggal,
-          pemeriksa: pickCol(row, ['pemeriksa', 'pem', 'petugas', 'namapemeriksa']),
-          pt: pickCol(row, ['estate', 'pt']),
-          kebun: pickCol(row, ['kebun']),
-          afdeling: pickCol(row, ['afdeling', 'afd']),
+          pemeriksa: cel(row, ['pemeriksa', 'pem', 'petugas', 'namapemeriksa']),
+          pt: cel(row, ['estate', 'pt']),
+          kebun: cel(row, ['kebun']),
+          afdeling: cel(row, ['afdeling', 'afd']),
           blok,
-          status: pickCol(row, ['statusblok', 'status']),
-          catatan: pickCol(row, ['catatan', 'cat', 'keterangan']),
+          status: cel(row, ['statusblok', 'status', 'hasilpemeriksaan', 'hasil']),
+          catatan: cel(row, ['catatan', 'cat', 'keterangan']),
         }
-        const kode = pickCol(row, ['kodetransaksi', 'kode', 'kodetrx'])
+        const luas = angkaCel(row, ['luasha', 'luas'])
+        if (luas !== undefined) rec.luas = luas
+        const pokok = angkaCel(row, ['jumlahpokok', 'pokok'])
+        if (pokok !== undefined) rec.pokok = pokok
+        const nKanan = angkaCel(row, ['nomorbariskanan', 'nokanan'])
+        if (nKanan !== undefined) rec.noPasarKanan = nKanan
+        const nKiri = angkaCel(row, ['nomorbariskiri', 'nokiri'])
+        if (nKiri !== undefined) rec.noPasarKiri = nKiri
+        const ancak = angkaCel(row, ['ancak'])
+        if (ancak !== undefined) rec.ancak = ancak
+        const kat = cel(row, ['kategoriancak', 'ancakstatus'])
+        if (kat) rec.ancakStatus = kat
         if (kode) rec.kodeTransaksi = kode
-        for (const t of ['semak', 'tunasan', 'titi', 'kerdil', 'banjir']) {
-          const v = pickCol(row, [t])
-          if (v && v !== '*') rec[t] = v
+        return rec
+      }
+
+      interface TemuanBaris {
+        row: Record<string, unknown>
+        tem: string; sam: number; nilai?: number
+        lat?: number; lng?: number; akr?: number; src?: string; foto: boolean
+      }
+
+      /** Susun payload details dari baris-baris temuan (satu transaksi) */
+      const susunDetails = (arr: TemuanBaris[]): Record<string, unknown> | null => {
+        const details: Record<string, {
+          value?: number; photo?: string
+          location?: { latitude?: number; longitude?: number; accuracy?: number; source?: string }
+          extras?: { value?: number; photo?: string
+            location?: { latitude?: number; longitude?: number; accuracy?: number; source?: string } }[]
+        }> = {}
+        for (const t of arr) {
+          const nm = t.tem.toLowerCase().trim()
+          const key = labelKeKunci[nm] || (nm.includes('bukti') ? 'bukti' : '')
+          if (!key) continue
+          const d: { value?: number; photo?: string
+            location?: { latitude?: number; longitude?: number; accuracy?: number; source?: string } } = {}
+          if (t.nilai !== undefined && t.nilai > 0) d.value = t.nilai
+          if (t.lat !== undefined && t.lng !== undefined) {
+            d.location = { latitude: t.lat, longitude: t.lng, accuracy: t.akr, source: t.src || 'GPS' }
+          }
+          if (t.foto) d.photo = 'ADA'
+          const slot = details[key] || (details[key] = {})
+          if (t.sam <= 1) {
+            Object.assign(slot, d)
+          } else {
+            if (!Array.isArray(slot.extras)) slot.extras = []
+            slot.extras[t.sam - 2] = d
+          }
         }
+        return Object.keys(details).length ? details : null
+      }
+
+      // ---- baca sheet Detail Temuan, kelompokkan per kode transaksi ----
+      const temuanByKode = new Map<string, TemuanBaris[]>()
+      if (shTemuan) {
+        for (const row of shTemuan.rows) {
+          const tem = cel(row, ['temuan'])
+          if (!tem) continue
+          const kode = cel(row, ['kodetransaksi', 'kode', 'kodetrx']).toLowerCase()
+          const tgl = normTanggal(row, ['tanggal', 'tgl', 'date'])
+          const blok = cel(row, ['blok']).toLowerCase()
+          const kunci = kode || `${tgl === '*' ? '' : tgl}|${blok}`
+          if (!kunci || kunci === '|') continue
+          const lat = angkaCel(row, ['latitude', 'lat'])
+          const lng = angkaCel(row, ['longitude', 'lng'])
+          const arr = temuanByKode.get(kunci) || []
+          const fotoTxt = cel(row, ['foto']).toLowerCase()
+          arr.push({
+            row,
+            tem,
+            sam: angkaCel(row, ['sampel', 'sam']) ?? 1,
+            nilai: angkaCel(row, ['nilai']),
+            lat: lat && lng ? lat : undefined,
+            lng: lat && lng ? lng : undefined,
+            akr: angkaCel(row, ['akurasim', 'akurasi', 'akr']),
+            src: cel(row, ['sumberlokasi', 'src']),
+            foto: fotoTxt.includes('ada') && !fotoTxt.includes('tidak ada'),
+          })
+          temuanByKode.set(kunci, arr)
+        }
+      }
+
+      // ---- susun transaksi dari sheet Rekap ----
+      const records: Record<string, unknown>[] = []
+      let dilewati = 0
+      const dipakai = new Set<string>()
+      for (const row of shRekap.rows) {
+        const rec = buatRec(row)
+        if (!rec) { dilewati++; continue }
+        const kode = String(rec.kodeTransaksi || '').toLowerCase()
+        const kunciCari = kode || `${String(rec.tanggal || '')}|${String(rec.blok || '')}`.toLowerCase()
+        const arr = temuanByKode.get(kunciCari) || []
+        if (arr.length) dipakai.add(kunciCari)
+        // jumlah tiap metrik juga ditulis top-level (rekap tetap benar walau tanpa detail)
+        for (const t of ['semak', 'tunasan', 'titi', 'kerdil', 'banjir']) {
+          const total = arr
+            .filter((x) => (labelKeKunci[x.tem.toLowerCase().trim()] || '') === t)
+            .reduce((s, x) => s + (x.nilai || 0), 0)
+          if (total > 0) rec[t] = Number(total.toFixed(2))
+          else {
+            const v = angkaCel(row, [t, `${t}ha`, `${t}pkk`, `${t}unit`])
+            if (v !== undefined && v > 0) rec[t] = v
+          }
+        }
+        const details = arr.length ? susunDetails(arr) : null
+        if (details) rec.details = details
         records.push(rec)
       }
+
+      // ---- temuan tanpas transaksi di Rekap -> buat transaksi minimal ----
+      for (const [kunci, arr] of temuanByKode) {
+        if (dipakai.has(kunci)) continue
+        const rec = buatRec(arr[0].row)
+        if (!rec) continue
+        if (!rec.kodeTransaksi) rec.kodeTransaksi = kunci
+        const details = susunDetails(arr)
+        if (details) rec.details = details
+        records.push(rec)
+      }
+
       if (!records.length) {
-        throw new Error('Tidak ada baris yang bisa dibaca. Kolom minimum: Tanggal dan/atau Blok (lihat petunjuk di tombol Impor XLSX).')
+        throw new Error('Tidak ada baris yang bisa dibaca. Kolom minimum: Kode Transaksi dan/atau Tanggal dan/atau Blok (lihat petunjuk di tombol Impor XLSX).')
       }
       if (dilewati) {
-        toast.info(`${dilewati} baris dilewati (tanpa Tanggal dan Blok).`, { id: idToast })
+        toast.info(`${dilewati} baris dilewati (tanpa Tanggal, Blok, maupun Kode Transaksi).`, { id: idToast })
       }
       // kirim per bagian maks 500 baris (payload Excel kecil, tanpa foto)
       const MAKS = 500
@@ -508,7 +652,7 @@ export default function DataPage() {
         duplikat += Number(d.duplikat || 0)
       }
       toast.success(
-        `Impor XLSX selesai: ${baru} baris baru, ${sudahAda} transaksi yang sudah ada dilewati (tidak ditimpa), ${duplikat} baris kembar — dari ${diterima} baris. Catatan: foto tidak ikut di impor Excel; gunakan Impor JSON (HP) bila butuh foto.`,
+        `Impor XLSX selesai: ${baru} baris baru, ${sudahAda} transaksi yang sudah ada dilewati (tidak ditimpa), ${duplikat} baris kembar — dari ${diterima} baris${shTemuan ? ' (sheet Rekap + Detail Temuan digabung)' : ''}. Catatan: foto tidak ikut di impor Excel; gunakan Impor JSON (HP) bila butuh foto.`,
         { id: idToast, duration: 12000 }
       )
       load(); loadRekap()
@@ -736,7 +880,7 @@ export default function DataPage() {
           <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimpor} onClick={() => fileImporRef.current?.click()} title="Impor berkas JSON hasil menu 'Transfer Data Antar HP' di aplikasi (nama berkas dimulai CekBlok_). FOTO TEMUAN IKUT TERIMPOR. Data yang sudah ada otomatis dilewati / diperbarui — aman diulang. Bisa pilih beberapa berkas sekaligus.">
             <Upload className="h-4 w-4 mr-1.5" /> {mengimpor ? 'Mengimpor…' : 'Impor JSON (HP)'}
           </Button>
-          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimporX} onClick={() => fileImporXlsxRef.current?.click()} title="Impor data dari berkas Excel (.xlsx). Kolom: Tanggal, Pemeriksa, Estate/PT, Kebun, Afdeling, Blok, Status — kolom opsional: Catatan, Semak, Tunasan, Titi, Kerdil, Banjir. Baris Excel ikut terbaca walau urutan kolom berbeda. HANYA MENAMBAH data baru — transaksi yang sudah ada tidak ditimpa, aman diulang. Foto tidak ikut: untuk foto gunakan Impor JSON (HP).">
+          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimporX} onClick={() => fileImporXlsxRef.current?.click()} title="Impor data dari berkas Excel (.xlsx). SEMUA sheet ikut dibaca: sheet Rekap (1 baris = 1 transaksi) dan sheet Detail Temuan (digabung per Kode Transaksi). Kolom: Tanggal, Pemeriksa, Estate/PT, Kebun, Afdeling, Blok, Luas (Ha), Jumlah Pokok, Nomor Baris Kanan/Kiri, Ancak, Kategori Ancak, Semak, Tunasan, Titi, Kerdil, Banjir, Status, Catatan. Baris Excel ikut terbaca walau urutan kolom berbeda; sel '*' dianggap kosong. HANYA MENAMBAH data baru — transaksi yang sudah ada tidak ditimpa, aman diulang. Foto tidak ikut: untuk foto gunakan Impor JSON (HP).">
             <Upload className="h-4 w-4 mr-1.5" /> {mengimporX ? 'Mengimpor…' : 'Impor XLSX'}
           </Button>
           <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" onClick={() => setExportOpen(true)}>
@@ -910,6 +1054,7 @@ export default function DataPage() {
                       <TableHead className="text-right">No</TableHead>
                       <TableHead>Tanggal</TableHead>
                       <TableHead>Kode Transaksi</TableHead>
+                      <TableHead>Pemeriksa</TableHead>
                       <TableHead>Estate</TableHead>
                       <TableHead>Kebun</TableHead>
                       <TableHead>Afdeling</TableHead>
@@ -935,11 +1080,11 @@ export default function DataPage() {
                   </TableHeader>
                   <TableBody>
                     {loading && Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>{Array.from({ length: 27 }).map((_, j) => (<TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>))}</TableRow>
+                      <TableRow key={i}>{Array.from({ length: 28 }).map((_, j) => (<TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>))}</TableRow>
                     ))}
                     {!loading && data && data.rows.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={27} className="text-center text-muted-foreground py-10">
+                        <TableCell colSpan={28} className="text-center text-muted-foreground py-10">
                           Belum ada data pada filter ini. Kirim data dari aplikasi HP lewat menu <b>Sinkronisasi Server → Kirim Data ke Server</b>.
                         </TableCell>
                       </TableRow>
@@ -966,6 +1111,7 @@ export default function DataPage() {
                           <TableCell className="text-right text-xs text-muted-foreground">{(page - 1) * 25 + i + 1}</TableCell>
                           <TableCell className="whitespace-nowrap">{st(r.tanggal)}</TableCell>
                           <TableCell><code className="text-[11px] whitespace-nowrap">{st(r.kodeTransaksi)}</code></TableCell>
+                          <TableCell className="whitespace-nowrap text-xs">{st(r.pemeriksa || r.uploadedBy?.username)}</TableCell>
                           <TableCell>{st(r.estate)}</TableCell>
                           <TableCell>{st(r.kebun)}</TableCell>
                           <TableCell>{st(r.afdeling)}</TableCell>
