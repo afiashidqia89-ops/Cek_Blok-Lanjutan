@@ -498,7 +498,12 @@ export default function DataPage() {
         if (!blok && !tanggal && !kode) return null
         const rec: Record<string, unknown> = {
           tanggal,
-          pemeriksa: cel(row, ['pemeriksa', 'pem', 'petugas', 'namapemeriksa']),
+          // kolom nama pemeriksa: kumpulan varian header dari ekspor web/HP
+          // (normalisasi: huruf kecil tanpa spasi — "Nama Pemeriksa"->namapemeriksa)
+          pemeriksa: cel(row, [
+            'pemeriksa', 'namapemeriksa', 'pem', 'petugas', 'namapetugas',
+            'petugaspemeriksa', 'petugaslapangan', 'diperiksaoleh', 'oleh',
+          ]),
           pt: cel(row, ['estate', 'pt']),
           kebun: cel(row, ['kebun']),
           afdeling: cel(row, ['afdeling', 'afd']),
@@ -636,7 +641,7 @@ export default function DataPage() {
       const MAKS = 500
       const bagian: Record<string, unknown>[][] = []
       for (let i = 0; i < records.length; i += MAKS) bagian.push(records.slice(i, i + MAKS))
-      let diterima = 0, baru = 0, sudahAda = 0, duplikat = 0
+      let diterima = 0, baru = 0, sudahAda = 0, duplikat = 0, diperbarui = 0
       for (let i = 0; i < bagian.length; i++) {
         toast.loading(`Mengimpor bagian ${i + 1} dari ${bagian.length}…`, { id: idToast })
         const res = await fetch('/api/data/impor-xlsx', {
@@ -650,9 +655,10 @@ export default function DataPage() {
         baru += Number(d.baru || 0)
         sudahAda += Number(d.sudahAda || 0)
         duplikat += Number(d.duplikat || 0)
+        diperbarui += Number(d.diperbarui || 0)
       }
       toast.success(
-        `Impor XLSX selesai: ${baru} baris baru, ${sudahAda} transaksi yang sudah ada dilewati (tidak ditimpa), ${duplikat} baris kembar — dari ${diterima} baris${shTemuan ? ' (sheet Rekap + Detail Temuan digabung)' : ''}. Catatan: foto tidak ikut di impor Excel; gunakan Impor JSON (HP) bila butuh foto.`,
+        `Impor XLSX selesai: ${baru} baris baru${diperbarui ? `, ${diperbarui} baris Excel lama diperbarui (mis. kolom Pemeriksa/Luas yang tadinya kosong kini terisi)` : ''}, ${sudahAda} transaksi HP asli dilewati (tidak ditimpa), ${duplikat} baris kembar — dari ${diterima} baris${shTemuan ? ' (sheet Rekap + Detail Temuan digabung)' : ''}. Catatan: foto tidak ikut di impor Excel; gunakan Impor JSON (HP) bila butuh foto.`,
         { id: idToast, duration: 12000 }
       )
       load(); loadRekap()
@@ -834,7 +840,7 @@ export default function DataPage() {
    * koordinat, akurasi, sumber lokasi, tautan peta dan penanda foto. */
   const temuanTampil = useMemo(() => {
     const out: Array<{
-      key: string; id: string; no: number; kode: string; tgl: string
+      key: string; id: string; no: number; kode: string; tgl: string; pem: string
       pt: string; kb: string; afd: string; blok: string
       barisKanan: string; noKanan: string; barisKiri: string; noKiri: string
       ancak: string; kat: string
@@ -849,6 +855,7 @@ export default function DataPage() {
         out.push({
           key: `${r.id}-t${n}`, id: r.id, no: n,
           kode: st(r.kodeTransaksi), tgl: st(r.tanggal),
+          pem: st(r.pemeriksa || r.uploadedBy?.username),
           pt: st(r.estate), kb: st(r.kebun), afd: st(r.afdeling), blok: st(r.blok),
           barisKanan: rec.noPasarKanan ? 'Ya' : '*', noKanan: st(rec.noPasarKanan),
           barisKiri: rec.noPasarKiri ? 'Ya' : '*', noKiri: st(rec.noPasarKiri),
@@ -880,7 +887,7 @@ export default function DataPage() {
           <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimpor} onClick={() => fileImporRef.current?.click()} title="Impor berkas JSON hasil menu 'Transfer Data Antar HP' di aplikasi (nama berkas dimulai CekBlok_). FOTO TEMUAN IKUT TERIMPOR. Data yang sudah ada otomatis dilewati / diperbarui — aman diulang. Bisa pilih beberapa berkas sekaligus.">
             <Upload className="h-4 w-4 mr-1.5" /> {mengimpor ? 'Mengimpor…' : 'Impor JSON (HP)'}
           </Button>
-          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimporX} onClick={() => fileImporXlsxRef.current?.click()} title="Impor data dari berkas Excel (.xlsx). SEMUA sheet ikut dibaca: sheet Rekap (1 baris = 1 transaksi) dan sheet Detail Temuan (digabung per Kode Transaksi). Kolom: Tanggal, Pemeriksa, Estate/PT, Kebun, Afdeling, Blok, Luas (Ha), Jumlah Pokok, Nomor Baris Kanan/Kiri, Ancak, Kategori Ancak, Semak, Tunasan, Titi, Kerdil, Banjir, Status, Catatan. Baris Excel ikut terbaca walau urutan kolom berbeda; sel '*' dianggap kosong. HANYA MENAMBAH data baru — transaksi yang sudah ada tidak ditimpa, aman diulang. Foto tidak ikut: untuk foto gunakan Impor JSON (HP).">
+          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimporX} onClick={() => fileImporXlsxRef.current?.click()} title="Impor data dari berkas Excel (.xlsx). SEMUA sheet ikut dibaca: sheet Rekap (1 baris = 1 transaksi) dan sheet Detail Temuan (digabung per Kode Transaksi). Kolom: Tanggal, Pemeriksa, Estate/PT, Kebun, Afdeling, Blok, Luas (Ha), Jumlah Pokok, Nomor Baris Kanan/Kiri, Ancak, Kategori Ancak, Semak, Tunasan, Titi, Kerdil, Banjir, Status, Catatan. Baris Excel ikut terbaca walau urutan kolom berbeda; sel '*' dianggap kosong. Baris hasil impor Excel yang sudah ada otomatis DIPERBARUI (mis. kolom Pemeriksa yang tadinya kosong kini terisi) — cukup impor ulang berkas yang sama. Transaksi asli dari aplikasi HP tidak pernah ditimpa. Foto tidak ikut: untuk foto gunakan Impor JSON (HP).">
             <Upload className="h-4 w-4 mr-1.5" /> {mengimporX ? 'Mengimpor…' : 'Impor XLSX'}
           </Button>
           <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" onClick={() => setExportOpen(true)}>
@@ -1254,6 +1261,7 @@ export default function DataPage() {
                       <TableHead className="text-right">No</TableHead>
                       <TableHead>Kode Transaksi</TableHead>
                       <TableHead>Tanggal</TableHead>
+                      <TableHead>Pemeriksa</TableHead>
                       <TableHead>Estate</TableHead>
                       <TableHead>Kebun</TableHead>
                       <TableHead>Afdeling</TableHead>
@@ -1280,14 +1288,14 @@ export default function DataPage() {
                   <TableBody>
                     {loading && Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 25 }).map((_, j) => (
+                        {Array.from({ length: 26 }).map((_, j) => (
                           <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                         ))}
                       </TableRow>
                     ))}
                     {!loading && temuanTampil.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={25} className="text-center text-muted-foreground py-10">
+                        <TableCell colSpan={26} className="text-center text-muted-foreground py-10">
                           Belum ada temuan pada halaman ini. Kirim data dari aplikasi HP lewat menu <b>Sinkronisasi Server → Kirim Data ke Server</b>.
                         </TableCell>
                       </TableRow>
@@ -1310,6 +1318,7 @@ export default function DataPage() {
                           <TableCell className="text-right text-xs text-muted-foreground">{b.no}</TableCell>
                           <TableCell><code className="text-[11px] whitespace-nowrap">{b.kode}</code></TableCell>
                           <TableCell className="whitespace-nowrap">{b.tgl}</TableCell>
+                          <TableCell className="whitespace-nowrap text-xs">{b.pem || '*'}</TableCell>
                           <TableCell>{b.pt}</TableCell>
                           <TableCell>{b.kb}</TableCell>
                           <TableCell>{b.afd}</TableCell>
