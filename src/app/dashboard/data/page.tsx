@@ -32,7 +32,7 @@ import {
   FileSpreadsheet, MapPin, Camera, Filter, MoreVertical, ClipboardList, ListTree, Upload,
 } from 'lucide-react'
 import { jsonFetch } from '@/lib/api'
-import { buildWorkbook, downloadWorkbook, type ExcelSheetImage, type ExcelWorksheet } from '@/lib/excel-client'
+import { buildWorkbook, downloadWorkbook, parseXlsx, pickCol, type ExcelSheetImage, type ExcelWorksheet } from '@/lib/excel-client'
 
 interface Row {
   id: string; kodeTransaksi: string; tanggal: string; pemeriksa: string;
@@ -287,7 +287,9 @@ export default function DataPage() {
   const [facets, setFacets] = useState<Facets>({ estate: [], kebun: [], afdeling: [], blok: [], pemeriksa: [] })
   const [exporting, setExporting] = useState(false)
   const [mengimpor, setMengimpor] = useState(false)
+  const [mengimporX, setMengimporX] = useState(false)
   const fileImporRef = useRef<HTMLInputElement>(null)
+  const fileImporXlsxRef = useRef<HTMLInputElement>(null)
   const [rekapRecords, setRekapRecords] = useState<Record<string, unknown>[]>([])
   const [masterMap, setMasterMap] = useState<Map<string, { luas: number | null; pokok: number | null }>>(new Map())
 
@@ -442,6 +444,104 @@ export default function DataPage() {
     } finally {
       setMengimpor(false)
     }
+  }
+
+  /** ---- IMPOR XLSX (Data Pemeriksaan) ----
+   * Berkas Excel (.xlsx) diparse di browser (ExcelJS via lib/excel-client).
+   * Kolom wajib: Tanggal + Blok. Kolom lain opsional: Pemeriksa, Estate/PT,
+   * Kebun, Afdeling, Status, Catatan, dan temuan (Semak, Tunasan, Titi,
+   * Kerdil, Banjir). Dikirim ke /api/data/impor-xlsx yang HANYA MENAMBAH
+   * data baru — transaksi yang sudah ada di server tidak pernah ditimpa. */
+  async function imporXlsx(file: File) {
+    setMengimporX(true)
+    const idToast = toast.loading(`Membaca ${file.name}…`)
+    try {
+      if (!/\.xlsx$/i.test(file.name)) throw new Error('Format harus .xlsx — berkas Excel')
+      const parsed = await parseXlsx(file, 0)
+      const records: Record<string, unknown>[] = []
+      let dilewati = 0
+      for (const row of parsed.rows) {
+        const tanggal = normTanggal(row, ['tanggal', 'tgl', 'date'])
+        const blok = pickCol(row, ['blok'])
+        if (!blok && !tanggal) { dilewati++; continue }
+        const rec: Record<string, unknown> = {
+          tanggal,
+          pemeriksa: pickCol(row, ['pemeriksa', 'pem', 'petugas', 'namapemeriksa']),
+          pt: pickCol(row, ['estate', 'pt']),
+          kebun: pickCol(row, ['kebun']),
+          afdeling: pickCol(row, ['afdeling', 'afd']),
+          blok,
+          status: pickCol(row, ['statusblok', 'status']),
+          catatan: pickCol(row, ['catatan', 'cat', 'keterangan']),
+        }
+        const kode = pickCol(row, ['kodetransaksi', 'kode', 'kodetrx'])
+        if (kode) rec.kodeTransaksi = kode
+        for (const t of ['semak', 'tunasan', 'titi', 'kerdil', 'banjir']) {
+          const v = pickCol(row, [t])
+          if (v && v !== '*') rec[t] = v
+        }
+        records.push(rec)
+      }
+      if (!records.length) {
+        throw new Error('Tidak ada baris yang bisa dibaca. Kolom minimum: Tanggal dan/atau Blok (lihat petunjuk di tombol Impor XLSX).')
+      }
+      if (dilewati) {
+        toast.info(`${dilewati} baris dilewati (tanpa Tanggal dan Blok).`, { id: idToast })
+      }
+      // kirim per bagian maks 500 baris (payload Excel kecil, tanpa foto)
+      const MAKS = 500
+      const bagian: Record<string, unknown>[][] = []
+      for (let i = 0; i < records.length; i += MAKS) bagian.push(records.slice(i, i + MAKS))
+      let diterima = 0, baru = 0, sudahAda = 0, duplikat = 0
+      for (let i = 0; i < bagian.length; i++) {
+        toast.loading(`Mengimpor bagian ${i + 1} dari ${bagian.length}…`, { id: idToast })
+        const res = await fetch('/api/data/impor-xlsx', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ records: bagian[i] }),
+        })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok || !d.ok) throw new Error(d.error || `Impor gagal (bagian ${i + 1})`)
+        diterima += Number(d.diterima || 0)
+        baru += Number(d.baru || 0)
+        sudahAda += Number(d.sudahAda || 0)
+        duplikat += Number(d.duplikat || 0)
+      }
+      toast.success(
+        `Impor XLSX selesai: ${baru} baris baru, ${sudahAda} transaksi yang sudah ada dilewati (tidak ditimpa), ${duplikat} baris kembar — dari ${diterima} baris. Catatan: foto tidak ikut di impor Excel; gunakan Impor JSON (HP) bila butuh foto.`,
+        { id: idToast, duration: 12000 }
+      )
+      load(); loadRekap()
+    } catch (e) {
+      toast.error(String((e as Error).message || e), { id: idToast })
+    } finally {
+      setMengimporX(false)
+    }
+  }
+
+  /** Normalisasi kolom tanggal dari Excel: Date / nomor seri Excel /
+   * teks "YYYY-MM-DD" atau "DD/MM/YYYY" → "YYYY-MM-DD". */
+  function normTanggal(row: Record<string, unknown>, names: string[]): string {
+    const keys = Object.keys(row)
+    for (const n of names) {
+      const k = keys.find((key) => key.toLowerCase().replace(/[^a-z0-9]+/g, '') === n.toLowerCase().replace(/[^a-z0-9]+/g, ''))
+      if (k == null || row[k] == null || String(row[k]).trim() === '') continue
+      const v = row[k]
+      if (v instanceof Date) {
+        return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`
+      }
+      if (typeof v === 'number' && isFinite(v) && v > 20000 && v < 80000) {
+        const d = new Date(Math.round((v - 25569) * 86400 * 1000))
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      }
+      const s = String(v).trim()
+      let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/)
+      if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+      m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/)
+      if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+      return s
+    }
+    return ''
   }
 
   /** ---- EKSPOR XLSX sama seperti aplikasi (Rekap + Detail Temuan + foto) ----
@@ -636,6 +736,9 @@ export default function DataPage() {
           <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimpor} onClick={() => fileImporRef.current?.click()} title="Impor berkas JSON hasil menu 'Transfer Data Antar HP' di aplikasi (nama berkas dimulai CekBlok_). FOTO TEMUAN IKUT TERIMPOR. Data yang sudah ada otomatis dilewati / diperbarui — aman diulang. Bisa pilih beberapa berkas sekaligus.">
             <Upload className="h-4 w-4 mr-1.5" /> {mengimpor ? 'Mengimpor…' : 'Impor JSON (HP)'}
           </Button>
+          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimporX} onClick={() => fileImporXlsxRef.current?.click()} title="Impor data dari berkas Excel (.xlsx). Kolom: Tanggal, Pemeriksa, Estate/PT, Kebun, Afdeling, Blok, Status — kolom opsional: Catatan, Semak, Tunasan, Titi, Kerdil, Banjir. Baris Excel ikut terbaca walau urutan kolom berbeda. HANYA MENAMBAH data baru — transaksi yang sudah ada tidak ditimpa, aman diulang. Foto tidak ikut: untuk foto gunakan Impor JSON (HP).">
+            <Upload className="h-4 w-4 mr-1.5" /> {mengimporX ? 'Mengimpor…' : 'Impor XLSX'}
+          </Button>
           <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" onClick={() => setExportOpen(true)}>
             <Download className="h-4 w-4 mr-1.5" /> Unduh Excel / JSON
           </Button>
@@ -786,19 +889,6 @@ export default function DataPage() {
               {selected.size > 0 && (
                 <span className="text-xs text-muted-foreground">{selected.size} data dicentang pada halaman ini</span>
               )}
-              <div className="ml-auto">
-                <Button variant="outline" size="sm" disabled={exporting} onClick={() => eksporXlsx(true)}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Unduh Rekap (XLSX + Foto)
-                </Button>
-              </div>
-            </div>
-          )}
-          {!bolehKelola && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" disabled={exporting} onClick={() => eksporXlsx(true)}>
-                <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Unduh Rekap (XLSX + Foto)
-              </Button>
-              <div className="ml-auto text-xs text-muted-foreground">Kolom sama persis dengan sheet &quot;Rekap&quot; pada ekspor Excel.</div>
             </div>
           )}
 
@@ -1366,6 +1456,15 @@ export default function DataPage() {
         multiple
         className="hidden"
         onChange={(e) => { const fs = Array.from(e.target.files || []); e.target.value = ''; if (fs.length) void imporJson(fs) }}
+      />
+
+      {/* input berkas impor XLSX (tersembunyi, dibuka tombol Impor XLSX) */}
+      <input
+        ref={fileImporXlsxRef}
+        type="file"
+        accept=".xlsx"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void imporXlsx(f) }}
       />
 
       {/* Dialog Galeri Foto (dibuka dari kolom Foto di tabel Hasil Temuan) */}
