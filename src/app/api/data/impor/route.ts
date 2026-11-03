@@ -1,71 +1,94 @@
 import { NextResponse } from 'next/server'
+import { createHash } from 'node:crypto'
 import { getSession } from '@/lib/auth'
-import { ingestTransfer } from '@/lib/ingest'
-import { dbErrorResponse } from '@/lib/api'
+import { computeKey } from '@/lib/ingest'
+import { db } from '@/lib/db'
 import { logAudit } from '@/lib/log'
 
 /**
- * Impor berkas transfer JSON hasil "Transfer Data Antar HP" aplikasi Cek Blok
- * (nama berkas biasanya: CekBlok_<NamaHP>_<tanggal>_bagian1dari1.json).
- * Bedanya dengan impor Excel: FOTO TEMUAN IKUT TERIMPOR karena tersimpan di
- * dalam JSON (base64). Format diterima persis seperti "Kirim ke Server":
- * {app:'cekblok-transfer', v:1, perangkat, records:[...]}
+ * Impor transaksi dari berkas Excel (.xlsx) — halaman Data Pemeriksaan.
+ * Berkas diparse di browser (ExcelJS); endpoint ini menerima baris yang
+ * sudah dipetakan: {tanggal, pemeriksa, pt, kebun, afdeling, blok, status,
+ * catatan, semak?, tunasan?, titi?, kerdil?, banjir?, kodeTransaksi?}.
  *
- * Aman diimpor berulang:
- *  - transaksi yang isinya sama persis -> dilewati (duplikat)
- *  - transaksi yang sudah ada tapi isinya berubah (mis. dulu tanpa foto,
- *    kini ada foto) -> ISI DI SERVER DIPERBARUI
+ * Bedanya dengan /api/data/impor (JSON transfer HP):
+ *  - TIDAK ADA FOTO — Excel tidak membawa foto, data foto di server tidak
+ *    tersentuh sama sekali.
+ *  - AMAN TERHADAP PENIMPAAAN: transaksi asli dari HP yang kuncinya sama
+ *    TIDAK PERNAH ditimpa (hanya dilewati sebagai "sudahAda"). Baris Excel
+ *    baru dibuat dengan kunci berawalan "xlsx-" sehingga tidak mungkin
+ *    menabrak / mengubah data asli dari aplikasi HP.
+ *  - Aman diulang: baris Excel yang sama diimpor ulang otomatis dilewati.
  */
 export async function POST(req: Request) {
   const s = await getSession()
   if (!s) return NextResponse.json({ ok: false, error: 'Belum login' }, { status: 401 })
 
   try {
-    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
-    if (!body || typeof body !== 'object') {
-      return NextResponse.json({ ok: false, error: 'Berkas JSON tidak valid' }, { status: 400 })
-    }
-    const app = String(body.app || '')
-    if (app && app !== 'cekblok-transfer') {
-      return NextResponse.json(
-        { ok: false, error: 'Ini bukan berkas transfer Cek Blok — gunakan berkas JSON hasil "Transfer Data Antar HP" di aplikasi' },
-        { status: 400 }
-      )
-    }
-    if (!Array.isArray(body.records)) {
-      return NextResponse.json(
-        { ok: false, error: 'Berkas tidak berisi data transaksi (field "records" tidak ditemukan)' },
-        { status: 400 }
-      )
+    const body = (await req.json().catch(() => null)) as { records?: unknown[] } | null
+    if (!body || !Array.isArray(body.records)) {
+      return NextResponse.json({ ok: false, error: 'Data tidak valid' }, { status: 400 })
     }
     if (body.records.length > 2000) {
       return NextResponse.json(
-        { ok: false, error: 'Terlalu banyak data sekali kirim (maks 2000 transaksi per bagian)' },
+        { ok: false, error: 'Terlalu banyak data sekali kirim (maks 2000 baris)' },
         { status: 400 }
       )
     }
 
-    const hasil = await ingestTransfer(body, { userId: s.uid, perangkatFallback: 'IMPOR-JSON' })
+    let diterima = 0
+    let baru = 0
+    let sudahAda = 0
+    let duplikat = 0
 
-    if (hasil.baru > 0 || hasil.diperbarui > 0) {
-      await logAudit(
-        s,
-        'IMPOR_JSON',
-        `${hasil.baru} baru, ${hasil.duplikat} duplikat, ${hasil.diperbarui} diperbarui, ${hasil.diterima} diterima (perangkat: ${hasil.perangkat || '?'})`
-      )
+    for (const raw of body.records) {
+      if (!raw || typeof raw !== 'object') continue
+      const r = raw as Record<string, unknown>
+      if (!r.blok && !r.tanggal) continue
+      diterima++
+
+      // (1) transaksi asli dari HP dengan kunci sama? lewati — JANGAN ditimpa
+      const kunciAsli = computeKey(r)
+      const ada = await db.dataRecord.findUnique({ where: { trfKey: kunciAsli }, select: { id: true } })
+      if (ada) { sudahAda++; continue }
+
+      // (2) kunci stabil untuk baris Excel: xlsx-<hash isi baris>
+      const pem = String(r.pemeriksa || '').trim().toLowerCase()
+      const saved = typeof r.savedAt === 'number' ? r.savedAt : ''
+      const h = createHash('sha256').update(JSON.stringify(r)).digest('hex').slice(0, 16)
+      const key = `xlsx-${h}|${pem}|${saved}`
+      const payload = JSON.stringify(r)
+
+      try {
+        await db.dataRecord.create({
+          data: {
+            trfKey: key,
+            kodeTransaksi: String(r.kodeTransaksi || ''),
+            tanggal: String(r.tanggal || ''),
+            pemeriksa: String(r.pemeriksa || ''),
+            estate: String(r.pt ?? r.estate ?? ''),
+            kebun: String(r.kebun ?? ''),
+            afdeling: String(r.afdeling ?? ''),
+            blok: String(r.blok ?? ''),
+            status: String(r.status ?? ''),
+            savedAt: typeof r.savedAt === 'number' ? r.savedAt : null,
+            payload,
+            perangkat: 'IMPOR-XLSX',
+            sizeBytes: Buffer.byteLength(payload, 'utf8'),
+            uploadedById: s.uid,
+          },
+        })
+        baru++
+      } catch {
+        duplikat++ // balapan unique constraint — baris identik sudah dibuat
+      }
     }
-    return NextResponse.json({
-      ok: true,
-      diterima: hasil.diterima,
-      baru: hasil.baru,
-      duplikat: hasil.duplikat,
-      diperbarui: hasil.diperbarui,
-    })
+
+    if (baru > 0) {
+      await logAudit(s, 'IMPOR_XLSX', `${baru} baru, ${sudahAda} sudah ada (dilewati), ${duplikat} kembar, ${diterima} diterima`)
+    }
+    return NextResponse.json({ ok: true, diterima, baru, sudahAda, duplikat })
   } catch (e) {
-    if (e instanceof Error && e.message) {
-      // pesan ingestTransfer sudah berbahasa Indonesia yang mudah dipahami
-      return NextResponse.json({ ok: false, error: e.message }, { status: 400 })
-    }
-    return dbErrorResponse(e)
+    return NextResponse.json({ ok: false, error: String((e as Error).message || e) }, { status: 500 })
   }
 }
