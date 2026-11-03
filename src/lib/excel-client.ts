@@ -147,6 +147,53 @@ export async function parseXlsx(file: File, sheetIndex = 0): Promise<ParsedXlsx>
   return { headers: headers.filter(Boolean), rows, sheetName: ws.name || 'Sheet1' }
 }
 
+export interface ParsedSheet {
+  name: string
+  headers: string[]
+  rows: Record<string, unknown>[]
+}
+
+/** Baca SEMUA sheet berkas .xlsx → { nama, header, baris } per sheet (dipakai impor) */
+export async function parseXlsxSheets(file: File): Promise<ParsedSheet[]> {
+  await ensureExcelJS()
+  const ExcelJS = window.ExcelJS!
+  const wb = new ExcelJS.Workbook()
+  const buf = await file.arrayBuffer()
+  await wb.xlsx.load(buf as never)
+  const out: ParsedSheet[] = []
+  for (const ws of wb.worksheets || []) {
+    if (!ws || ws.rowCount < 1) continue
+    const headers: string[] = []
+    const headRow = ws.getRow(1) as unknown as ExcelHeadRow
+    headRow.eachCell((cell, colNumber) => {
+      headers[colNumber] = String(cell?.value ?? '').trim()
+    })
+    const rows: Record<string, unknown>[] = []
+    for (let i = 2; i <= ws.rowCount; i++) {
+      const r = ws.getRow(i)
+      const obj: Record<string, unknown> = {}
+      let ada = false
+      headers.forEach((h, idx) => {
+        if (!h) return
+        const v = r.getCell(idx).value
+        let val: unknown = v
+        if (v && typeof v === 'object' && 'text' in (v as Record<string, unknown>)) {
+          val = (v as { text?: unknown }).text // sel hyperlink
+        } else if (v && typeof v === 'object' && 'result' in (v as Record<string, unknown>)) {
+          val = (v as { result?: unknown }).result // sel formula
+        } else if (v instanceof Date) {
+          val = v.toISOString().slice(0, 10)
+        }
+        obj[h] = val instanceof Date ? val.toISOString().slice(0, 10) : val
+        if (val !== null && val !== undefined && val !== '') ada = true
+      })
+      if (ada) rows.push(obj)
+    }
+    out.push({ name: ws.name || `Sheet${out.length + 1}`, headers: headers.filter(Boolean), rows })
+  }
+  return out
+}
+
 /** Cari kolom by beberapa kemungkinan nama header (tanpa peduli besar-kecil) */
 export function pickCol(
   row: Record<string, unknown>,
