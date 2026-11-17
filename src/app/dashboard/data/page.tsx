@@ -270,6 +270,9 @@ function TabelTemuan({ rec }: { rec: Record<string, unknown> }) {
   )
 }
 
+/** Jumlah baris maksimum per halaman tabel Data — sisanya masuk ke halaman berikutnya. */
+const UKURAN_HALAMAN = 10
+
 /** Daftar nomor halaman dengan elipsis: 1 2 [3] 4 … 27 */
 function daftarHalaman(page: number, pages: number): (number | '…')[] {
   if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1)
@@ -323,7 +326,7 @@ export default function DataPage() {
 
   const load = useCallback(() => {
     setLoading(true)
-    const p = new URLSearchParams({ page: String(page), take: '25', ringkas: '1' })
+    const p = new URLSearchParams({ page: String(page), take: String(UKURAN_HALAMAN), ringkas: '1' })
     Object.entries(applied).forEach(([k, v]) => { if (v) p.set(k, v) })
     if (kbScope) p.set('kebun', kbScope) // lingkup kebun user (server juga mengunci)
     jsonFetch<ListData & { ok: boolean; error?: string }>(`/api/data?${p}`)
@@ -1135,7 +1138,7 @@ export default function DataPage() {
                               />
                             </TableCell>
                           )}
-                          <TableCell className="text-right text-xs text-muted-foreground">{(page - 1) * 25 + i + 1}</TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">{(page - 1) * UKURAN_HALAMAN + i + 1}</TableCell>
                           <TableCell className="whitespace-nowrap">{st(r.tanggal)}</TableCell>
                           <TableCell><code className="text-[11px] whitespace-nowrap">{st(r.kodeTransaksi)}</code></TableCell>
                           <TableCell className="whitespace-nowrap text-xs">{st(r.pemeriksa || r.uploadedBy?.username)}</TableCell>
@@ -1203,7 +1206,7 @@ export default function DataPage() {
               {data && (
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3">
                   <p className="text-sm text-muted-foreground">
-                    Menampilkan {data.total === 0 ? 0 : (page - 1) * 25 + 1} – {Math.min(page * 25, data.total)} dari {data.total.toLocaleString('id-ID')} data
+                    Menampilkan {data.total === 0 ? 0 : (page - 1) * UKURAN_HALAMAN + 1} – {Math.min(page * UKURAN_HALAMAN, data.total)} dari {data.total.toLocaleString('id-ID')} data
                   </p>
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="Halaman sebelumnya">
@@ -1405,7 +1408,7 @@ export default function DataPage() {
               {data && (
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3">
                   <p className="text-sm text-muted-foreground">
-                    Menampilkan {data.total === 0 ? 0 : (page - 1) * 25 + 1} – {Math.min(page * 25, data.total)} dari {data.total.toLocaleString('id-ID')} data
+                    Menampilkan {data.total === 0 ? 0 : (page - 1) * UKURAN_HALAMAN + 1} – {Math.min(page * UKURAN_HALAMAN, data.total)} dari {data.total.toLocaleString('id-ID')} data
                   </p>
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="Halaman sebelumnya">
