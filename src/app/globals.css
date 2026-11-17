@@ -83,12 +83,61 @@
   color-scheme: light;
 }
 
+/* ============================================================
+   Tema gelap "HPI Green Dark" — hijau zamrud gelap yang nyaman
+   untuk monitoring malam hari. Diaktifkan lewat class 'dark'
+   pada <html> (tombol bulan/matahari di bilah atas & menu Pengaturan).
+   ============================================================ */
+.dark {
+  --background: oklch(0.165 0.014 160);
+  --foreground: oklch(0.93 0.015 150);
+  --card: oklch(0.205 0.016 158);
+  --card-foreground: oklch(0.93 0.015 150);
+  --popover: oklch(0.215 0.016 158);
+  --popover-foreground: oklch(0.93 0.015 150);
+  --primary: oklch(0.72 0.13 152);
+  --primary-foreground: oklch(0.17 0.03 158);
+  --secondary: oklch(0.27 0.02 156);
+  --secondary-foreground: oklch(0.9 0.015 150);
+  --muted: oklch(0.25 0.015 156);
+  --muted-foreground: oklch(0.66 0.02 150);
+  --accent: oklch(0.29 0.025 155);
+  --accent-foreground: oklch(0.92 0.015 150);
+  --destructive: oklch(0.62 0.18 25);
+  --border: oklch(0.31 0.018 155);
+  --input: oklch(0.33 0.018 155);
+  --ring: oklch(0.55 0.1 152);
+  --chart-1: oklch(0.68 0.13 152);
+  --chart-2: oklch(0.68 0.11 230);
+  --chart-3: oklch(0.75 0.14 85);
+  --chart-4: oklch(0.68 0.14 305);
+  --chart-5: oklch(0.68 0.17 30);
+  --sidebar: oklch(0.185 0.016 158);
+  --sidebar-foreground: oklch(0.9 0.015 150);
+  --sidebar-primary: oklch(0.72 0.13 152);
+  --sidebar-primary-foreground: oklch(0.17 0.03 158);
+  --sidebar-accent: oklch(0.28 0.025 155);
+  --sidebar-accent-foreground: oklch(0.92 0.015 150);
+  --sidebar-border: oklch(0.3 0.018 155);
+  --sidebar-ring: oklch(0.55 0.1 152);
+  color-scheme: dark;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   html {
     color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  /* latar gradasi versi gelap */
+  html.dark body {
+    background-image:
+      radial-gradient(1000px 420px at 8% -8%, oklch(0.28 0.04 158 / 0.35), transparent 60%),
+      radial-gradient(900px 400px at 102% -6%, oklch(0.24 0.03 150 / 0.3), transparent 58%);
   }
   body {
     @apply bg-background text-foreground;
@@ -132,4 +181,22 @@
       0 1px 2px 0 oklch(0.3 0.04 150 / 0.06),
       0 10px 28px -18px oklch(0.3 0.06 150 / 0.25);
   }
+  html.dark [data-slot="card"] {
+    box-shadow:
+      0 1px 2px 0 oklch(0 0 0 / 0.2),
+      0 10px 28px -18px oklch(0 0 0 / 0.45);
+  }
+}
+
+/* scrollbar versi gelap */
+html.dark * {
+  scrollbar-color: oklch(0.45 0.04 155 / 0.8) transparent;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.42 0.04 155 / 0.55);
+  background-clip: content-box;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0.06 155 / 0.8);
+  background-clip: content-box;
 }
