@@ -413,7 +413,7 @@ export default function PetaPage() {
             <div className="space-y-1.5">
               <Label>Kebun</Label>
               {kbScope ? (
-                <div className="flex h-9 items-center rounded-md border border-emerald-600/20 bg-emerald-600/10 px-3 text-sm font-medium text-emerald-900">
+                <div className="flex h-9 items-center rounded-md border border-emerald-600/20 bg-emerald-600/10 px-3 text-sm font-medium text-emerald-900 dark:text-emerald-200">
                   <span className="truncate">{kbScope} (terkunci)</span>
                 </div>
               ) : (
@@ -502,7 +502,7 @@ export default function PetaPage() {
             {info && (
               <div className="absolute bottom-3 left-3 right-3 sm:right-auto sm:max-w-md max-h-[45%] overflow-y-auto rounded-lg border bg-background/95 backdrop-blur p-3 shadow-lg">
                 <button className="absolute top-1.5 right-2 text-muted-foreground hover:text-foreground text-lg leading-none" onClick={() => setInfo(null)} aria-label="Tutup">×</button>
-                <div className="peta-info [&_table]:w-full [&_table]:text-xs [&_table]:mt-2 [&_th]:text-left [&_th]:pr-3 [&_th]:text-muted-foreground [&_th]:font-normal [&_th]:align-top [&_td]:font-medium [&_td]:break-words [&_.peta-note]:mt-2 [&_.peta-note]:text-xs [&_.peta-note]:text-muted-foreground [&_.peta-link]:mt-2 [&_.peta-link]:inline-block [&_.peta-link]:text-sm [&_.peta-link]:text-emerald-700 [&_.peta-link]:underline"
+                <div className="peta-info [&_table]:w-full [&_table]:text-xs [&_table]:mt-2 [&_th]:text-left [&_th]:pr-3 [&_th]:text-muted-foreground [&_th]:font-normal [&_th]:align-top [&_td]:font-medium [&_td]:break-words [&_.peta-note]:mt-2 [&_.peta-note]:text-xs [&_.peta-note]:text-muted-foreground [&_.peta-link]:mt-2 [&_.peta-link]:inline-block [&_.peta-link]:text-sm [&_.peta-link]:text-emerald-700 dark:text-emerald-400 [&_.peta-link]:underline"
                   dangerouslySetInnerHTML={{ __html: info.html }} />
                 {info.kind === 'temuan' && (
                   <div className="mt-2 border-t pt-2">
@@ -548,7 +548,7 @@ export default function PetaPage() {
               <div className="max-h-52 overflow-y-auto space-y-1.5">
                 {layers.map(L => (
                   <div key={L.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                    {L.type === 'RASTER' ? <FileText className="h-4 w-4 shrink-0 text-amber-600" /> : <MapIcon className="h-4 w-4 shrink-0 text-emerald-700" />}
+                    {L.type === 'RASTER' ? <FileText className="h-4 w-4 shrink-0 text-amber-600" /> : <MapIcon className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />}
                     <div className="min-w-0 flex-1">
                       <p className={`font-medium truncate ${hiddenLayers.has(L.id) ? 'line-through text-muted-foreground' : ''}`}>{L.name}</p>
                       <p className="text-[11px] text-muted-foreground">{L.type === 'RASTER' ? 'PDF map' : 'GeoJSON'} · {Math.max(1, Math.round(L.sizeBytes / 1024))} KB</p>
