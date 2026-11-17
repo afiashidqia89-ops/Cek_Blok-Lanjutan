@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
+import { cariWarnaTemuan } from '@/lib/temuan-warna'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
@@ -57,9 +58,20 @@ interface Facets { estate: string[]; kebun: string[]; afdeling: string[]; blok: 
 
 function statusColor(s: string): string {
   const v = (s || '').toLowerCase()
-  if (v.includes('kritis') || v.includes('buruk') || v.includes('prioritas')) return 'bg-red-500/12 text-red-700'
-  if (v.includes('perhatian') || v.includes('waspada') || v.includes('sedang') || v.includes('perbaikan')) return 'bg-amber-500/15 text-amber-700'
-  if (v) return 'bg-emerald-500/15 text-emerald-700'
+  if (v.includes('kritis') || v.includes('buruk') || v.includes('prioritas')) return 'bg-red-500/12 text-red-700 dark:text-red-400'
+  if (v.includes('perhatian') || v.includes('waspada') || v.includes('sedang') || v.includes('perbaikan')) return 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+  if (v) return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 dark:text-emerald-400'
+  return 'bg-muted text-muted-foreground'
+}
+
+/** Kelas warna chip temuan sesuai 5 warna tetap (konsisten dengan laporan & HP) */
+function kelasChipTemuan(nama: string): string {
+  const v = (nama || '').toLowerCase()
+  if (v.includes('semak')) return 'bg-red-500/12 text-red-700 dark:text-red-400'
+  if (v.includes('tunasan')) return 'bg-violet-500/12 text-violet-700 dark:text-violet-400'
+  if (v.includes('titi')) return 'bg-orange-800/12 text-orange-800 dark:text-orange-400'
+  if (v.includes('kerdil')) return 'bg-pink-500/12 text-pink-700 dark:text-pink-400'
+  if (v.includes('banjir') || v.includes('areal')) return 'bg-cyan-500/12 text-cyan-700 dark:text-cyan-400'
   return 'bg-muted text-muted-foreground'
 }
 
@@ -229,12 +241,20 @@ function TabelTemuan({ rec }: { rec: Record<string, unknown> }) {
           <TableBody>
             {rows.map((b, i) => (
               <TableRow key={i}>
-                <TableCell className="text-xs font-medium">{b.tem}</TableCell>
+                <TableCell className="text-xs">
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${kelasChipTemuan(b.tem)}`}>
+                    <span
+                      className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: cariWarnaTemuan(b.tem)?.hex || 'currentColor' }}
+                    />
+                    {b.tem}
+                  </span>
+                </TableCell>
                 <TableCell className="text-right text-xs">{b.sam}</TableCell>
                 <TableCell className="text-right text-xs tabular-nums">{b.nilai != null ? `${b.nilai} ${b.sat}` : '-'}</TableCell>
                 <TableCell className="text-xs whitespace-nowrap">
                   {b.lat != null && b.lng != null ? (
-                    <a className="text-emerald-700 underline decoration-dotted" target="_blank" rel="noopener"
+                    <a className="text-emerald-700 dark:text-emerald-400 underline decoration-dotted" target="_blank" rel="noopener"
                       href={`https://www.google.com/maps?q=${b.lat},${b.lng}`}>
                       {b.lat.toFixed(6)}, {b.lng.toFixed(6)}{b.akr != null ? ` (±${b.akr} m)` : ''}
                     </a>
@@ -874,7 +894,7 @@ export default function DataPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-emerald-950">Data Pemeriksaan</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-50">Data Pemeriksaan</h1>
           <p className="text-sm text-muted-foreground">
             {kbScope
               ? `Lingkup kebun ${kbScope} — hanya transaksi kebun Anda yang tampil di sini.`
@@ -884,16 +904,16 @@ export default function DataPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimpor} onClick={() => fileImporRef.current?.click()} title="Impor berkas JSON hasil menu 'Transfer Data Antar HP' di aplikasi (nama berkas dimulai CekBlok_). FOTO TEMUAN IKUT TERIMPOR. Data yang sudah ada otomatis dilewati / diperbarui — aman diulang. Bisa pilih beberapa berkas sekaligus.">
+          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-600/10" disabled={mengimpor} onClick={() => fileImporRef.current?.click()} title="Impor berkas JSON hasil menu 'Transfer Data Antar HP' di aplikasi (nama berkas dimulai CekBlok_). FOTO TEMUAN IKUT TERIMPOR. Data yang sudah ada otomatis dilewati / diperbarui — aman diulang. Bisa pilih beberapa berkas sekaligus.">
             <Upload className="h-4 w-4 mr-1.5" /> {mengimpor ? 'Mengimpor…' : 'Impor JSON (HP)'}
           </Button>
-          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" disabled={mengimporX} onClick={() => fileImporXlsxRef.current?.click()} title="Impor data dari berkas Excel (.xlsx). SEMUA sheet ikut dibaca: sheet Rekap (1 baris = 1 transaksi) dan sheet Detail Temuan (digabung per Kode Transaksi). Kolom: Tanggal, Pemeriksa, Estate/PT, Kebun, Afdeling, Blok, Luas (Ha), Jumlah Pokok, Nomor Baris Kanan/Kiri, Ancak, Kategori Ancak, Semak, Tunasan, Titi, Kerdil, Banjir, Status, Catatan. Baris Excel ikut terbaca walau urutan kolom berbeda; sel '*' dianggap kosong. Baris hasil impor Excel yang sudah ada otomatis DIPERBARUI (mis. kolom Pemeriksa yang tadinya kosong kini terisi) — cukup impor ulang berkas yang sama. Transaksi asli dari aplikasi HP tidak pernah ditimpa. Foto tidak ikut: untuk foto gunakan Impor JSON (HP).">
+          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-600/10" disabled={mengimporX} onClick={() => fileImporXlsxRef.current?.click()} title="Impor data dari berkas Excel (.xlsx). SEMUA sheet ikut dibaca: sheet Rekap (1 baris = 1 transaksi) dan sheet Detail Temuan (digabung per Kode Transaksi). Kolom: Tanggal, Pemeriksa, Estate/PT, Kebun, Afdeling, Blok, Luas (Ha), Jumlah Pokok, Nomor Baris Kanan/Kiri, Ancak, Kategori Ancak, Semak, Tunasan, Titi, Kerdil, Banjir, Status, Catatan. Baris Excel ikut terbaca walau urutan kolom berbeda; sel '*' dianggap kosong. Baris hasil impor Excel yang sudah ada otomatis DIPERBARUI (mis. kolom Pemeriksa yang tadinya kosong kini terisi) — cukup impor ulang berkas yang sama. Transaksi asli dari aplikasi HP tidak pernah ditimpa. Foto tidak ikut: untuk foto gunakan Impor JSON (HP).">
             <Upload className="h-4 w-4 mr-1.5" /> {mengimporX ? 'Mengimpor…' : 'Impor XLSX'}
           </Button>
-          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" onClick={() => setExportOpen(true)}>
+          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-600/10" onClick={() => setExportOpen(true)}>
             <Download className="h-4 w-4 mr-1.5" /> Unduh Excel / JSON
           </Button>
-          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10" onClick={() => { setShareOpen(true); setShareUrl(''); loadShares() }}>
+          <Button variant="outline" className="border-emerald-700/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-600/10" onClick={() => { setShareOpen(true); setShareUrl(''); loadShares() }}>
             <Link2 className="h-4 w-4 mr-1.5" /> Tautan Berbagi
           </Button>
         </div>
@@ -902,8 +922,8 @@ export default function DataPage() {
       {/* ============ KARTU FILTER (gaya desain HPI) ============ */}
       <Card className="border-emerald-600/15">
         <CardContent className="p-4 space-y-3">
-          <p className="flex items-center gap-2 text-base font-semibold text-emerald-950">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-100 text-emerald-700">
+          <p className="flex items-center gap-2 text-base font-semibold text-emerald-950 dark:text-emerald-50">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
               <Filter className="h-4 w-4" />
             </span>
             Filter Pemeriksaan
@@ -922,7 +942,7 @@ export default function DataPage() {
             <div className="space-y-1.5">
               <Label htmlFor="fk">Kebun</Label>
               {kbScope ? (
-                <div className="flex h-9 items-center rounded-md border border-emerald-600/25 bg-emerald-600/10 px-3 text-sm font-medium text-emerald-800" id="fk">
+                <div className="flex h-9 items-center rounded-md border border-emerald-600/25 bg-emerald-600/10 px-3 text-sm font-medium text-emerald-800 dark:text-emerald-300" id="fk">
                   <span className="truncate">{kbScope} (terkunci)</span>
                 </div>
               ) : (
@@ -977,7 +997,7 @@ export default function DataPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 border-emerald-700/30 text-emerald-800 hover:bg-emerald-600/10"
+              className="h-9 border-emerald-700/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-600/10"
               onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); setPage(1) }}
             >
               <RefreshCw className="h-4 w-4 mr-1.5" /> Reset
@@ -1010,7 +1030,7 @@ export default function DataPage() {
               <Card key={k.l} className="border-emerald-600/15 py-0">
                 <CardContent className="p-3">
                   <p className="text-xs text-muted-foreground">{k.l}</p>
-                  <p className="text-lg font-bold text-emerald-900">{k.v}</p>
+                  <p className="text-lg font-bold text-emerald-900 dark:text-emerald-200">{k.v}</p>
                 </CardContent>
               </Card>
             ))}
@@ -1339,7 +1359,7 @@ export default function DataPage() {
                           <TableCell className="text-xs">{b.src || '*'}</TableCell>
                           <TableCell className="whitespace-nowrap">
                             {b.lat != null && b.lng != null ? (
-                              <a className="text-xs text-emerald-700 underline decoration-dotted" target="_blank" rel="noopener"
+                              <a className="text-xs text-emerald-700 dark:text-emerald-400 underline decoration-dotted" target="_blank" rel="noopener"
                                 href={`https://www.google.com/maps?q=${b.lat},${b.lng}`}>
                                 <MapPin className="inline h-3 w-3 mr-0.5" />Buka Peta
                               </a>
