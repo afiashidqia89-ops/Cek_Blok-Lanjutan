@@ -294,7 +294,7 @@ function DataMasterIsi() {
           <Card key={k.l} className="border-emerald-600/15">
             <CardContent className="p-3">
               <p className="text-xs text-muted-foreground">{k.l}</p>
-              <p className="text-lg font-bold text-emerald-900">{k.v}</p>
+              <p className="text-lg font-bold text-emerald-900 dark:text-emerald-200">{k.v}</p>
             </CardContent>
           </Card>
         ))}
@@ -302,7 +302,7 @@ function DataMasterIsi() {
 
       {facets?.kosong && (
         <Card className="border-amber-500/30 bg-amber-500/10">
-          <CardContent className="p-4 text-sm text-amber-700">
+          <CardContent className="p-4 text-sm text-amber-700 dark:text-amber-400">
             <b>Data master masih kosong.</b> Klik <b>Muat DB Aresta Bawaan</b> untuk menyalin database blok
             dari aplikasi (6.041 blok) ke server, atau gunakan <b>Impor Data (XLSX)</b> untuk berkas Excel milik Anda.
           </CardContent>
@@ -376,7 +376,7 @@ function DataMasterIsi() {
                 {rows?.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>{r.estate}</TableCell>
-                    <TableCell><Badge variant="secondary" className="bg-emerald-600/10 text-emerald-900">{r.kebun}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary" className="bg-emerald-600/10 text-emerald-900 dark:text-emerald-200">{r.kebun}</Badge></TableCell>
                     <TableCell>{r.afdeling}</TableCell>
                     <TableCell className="font-medium">{r.blok}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.luas == null ? '-' : fmt2(r.luas)}</TableCell>
