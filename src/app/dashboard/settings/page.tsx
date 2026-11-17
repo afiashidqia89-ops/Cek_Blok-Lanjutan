@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import { Save, ChevronLeft, ChevronRight, KeyRound, Plus, Copy, Trash2, Eye, EyeOff } from 'lucide-react'
+import { Save, ChevronLeft, ChevronRight, KeyRound, Plus, Copy, Trash2, Eye, EyeOff, Sun, Moon } from 'lucide-react'
+import { temaGelap, temaSet } from '@/lib/tema'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
@@ -34,6 +35,66 @@ interface TokenRow {
 }
 
 import GuardSuperAdmin from '@/components/guard-superadmin'
+
+/** Kartu pilihan Mode Terang / Mode Gelap — tersimpan di perangkat ini */
+function KartuTema() {
+  const [gelap, setGelap] = useState<boolean | null>(null)
+  useEffect(() => { setGelap(temaGelap()) }, [])
+
+  function pilih(berikut: boolean) {
+    setGelap(berikut)
+    temaSet(berikut)
+  }
+
+  const opsi = [
+    { v: false, judul: 'Mode Terang', desc: 'Cocok untuk kerja di lapangan / siang hari', ikon: Sun, kelasIkon: 'bg-amber-100 dark:bg-amber-500/15 text-amber-600' },
+    { v: true, judul: 'Mode Gelap', desc: 'Nyaman untuk monitoring malam hari', ikon: Moon, kelasIkon: 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600' },
+  ]
+
+  return (
+    <Card className="border-emerald-600/15">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Tampilan & Tema</CardTitle>
+        <CardDescription>Pilih mode tampilan — pengaturan berlaku untuk perangkat ini</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {opsi.map((o) => {
+            const Icon = o.ikon
+            const terpilih = gelap === o.v
+            return (
+              <button
+                key={o.judul}
+                type="button"
+                onClick={() => pilih(o.v)}
+                className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${
+                  terpilih
+                    ? 'border-emerald-600/50 bg-emerald-600/10 ring-2 ring-emerald-600/25'
+                    : 'border-border hover:bg-muted/60'
+                }`}
+              >
+                <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${o.kelasIkon}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">{o.judul}</span>
+                  <span className="block text-xs text-muted-foreground">{o.desc}</span>
+                </span>
+                <span
+                  className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${
+                    terpilih ? 'border-emerald-600' : 'border-muted-foreground/40'
+                  }`}
+                >
+                  {terpilih && <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function SettingsPage() {
   return (
@@ -124,6 +185,8 @@ function SettingsIsi() {
                   </div>
                 </CardContent>
               </Card>
+
+              <KartuTema />
 
               <Card className="border-emerald-600/15">
                 <CardHeader className="pb-3">
@@ -311,9 +374,9 @@ function TokenPerangkatTab() {
 
       <Card className="border-emerald-600/15 bg-emerald-600/10">
         <CardContent className="p-4 flex gap-3 text-sm">
-          <KeyRound className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
+          <KeyRound className="h-5 w-5 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-medium text-emerald-950">Cara memakai di aplikasi Cek Blok:</p>
+            <p className="font-medium text-emerald-950 dark:text-emerald-50">Cara memakai di aplikasi Cek Blok:</p>
             <ol className="list-decimal ml-4 text-muted-foreground space-y-0.5">
               <li>Buat token di sini, lalu salin (cbk_…).</li>
               <li>Buka aplikasi Cek Blok (APK atau di <code>/app/</code>), masuk menu <b>Riwayat → Transfer Data Antar HP</b>.</li>
@@ -404,7 +467,7 @@ function TokenPerangkatTab() {
           {newToken ? (
             <div className="space-y-3">
               <div className="rounded-md border bg-emerald-600/10 p-3">
-                <p className="text-sm font-medium text-emerald-950 mb-1">Token berhasil dibuat!</p>
+                <p className="text-sm font-medium text-emerald-950 dark:text-emerald-50 mb-1">Token berhasil dibuat!</p>
                 <code className="text-xs break-all">{newToken}</code>
               </div>
               <Button className="w-full bg-emerald-600 hover:bg-emerald-700"
