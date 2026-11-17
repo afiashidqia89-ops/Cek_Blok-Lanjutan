@@ -71,10 +71,10 @@ const TIP = {
 
 function statusColor(s: string): string {
   const st = (s || '').toLowerCase()
-  if (st.includes('kritis') || st.includes('buruk') || st.includes('prioritas')) return 'bg-red-500/12 text-red-700'
-  if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang') || st.includes('perbaikan')) return 'bg-amber-500/15 text-amber-700'
-  if (st.includes('baik')) return 'bg-emerald-500/15 text-emerald-700'
-  if (st) return 'bg-emerald-600/10 text-emerald-800'
+  if (st.includes('kritis') || st.includes('buruk') || st.includes('prioritas')) return 'bg-red-500/12 text-red-700 dark:text-red-400'
+  if (st.includes('perhatian') || st.includes('waspada') || st.includes('sedang') || st.includes('perbaikan')) return 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+  if (st.includes('baik')) return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+  if (st) return 'bg-emerald-600/10 text-emerald-800 dark:text-emerald-300'
   return 'bg-muted text-muted-foreground'
 }
 
@@ -91,9 +91,19 @@ function angkaID(n: number | null | undefined, dec = 0): string {
   return n.toLocaleString('id-ID', { minimumFractionDigits: dec, maximumFractionDigits: dec })
 }
 
+/** Sapaan sesuai waktu hari ini (WIB perangkat) */
+function salam(): string {
+  const j = new Date().getHours()
+  if (j >= 4 && j < 11) return 'Selamat pagi'
+  if (j >= 11 && j < 15) return 'Selamat siang'
+  if (j >= 15 && j < 18) return 'Selamat sore'
+  return 'Selamat malam'
+}
+
 export default function DashboardHome() {
   const [data, setData] = useState<StatsData | null>(null)
   const [error, setError] = useState('')
+  const [nama, setNama] = useState('')
 
   useEffect(() => {
     jsonFetch<StatsData & { ok?: boolean; error?: string }>('/api/stats')
@@ -101,13 +111,20 @@ export default function DashboardHome() {
       .catch((e) => setError(String((e as Error).message || e)))
   }, [])
 
+  // nama pemakai untuk sapaan di banner
+  useEffect(() => {
+    jsonFetch<{ ok?: boolean; user?: { name?: string } }>('/api/auth/me')
+      .then((d) => { if (d.ok && d.user?.name) setNama(d.user.name) })
+      .catch(() => {})
+  }, [])
+
   if (error) {
     return (
       <Card className="border-red-500/30 bg-red-500/5">
-        <CardContent className="p-4 text-sm text-red-700">
+        <CardContent className="p-4 text-sm text-red-700 dark:text-red-400">
           <p className="font-semibold">Gagal memuat ringkasan</p>
           <p className="mt-1 text-red-600">{error}</p>
-          <Button size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-700 hover:bg-red-500/10" onClick={() => location.reload()}>
+          <Button size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-700 dark:text-red-400 hover:bg-red-500/10" onClick={() => location.reload()}>
             Muat Ulang
           </Button>
         </CardContent>
@@ -144,17 +161,21 @@ export default function DashboardHome() {
     .reduce((s, x) => s + x.jumlah, 0)
 
   const kartu = [
-    { l: 'Total Blok', v: angkaID(totalBlok), i: TreePalm, kelas: 'bg-emerald-100 text-emerald-700' },
-    { l: 'Pemeriksaan', v: angkaID(data.totalRecords), i: ClipboardList, kelas: 'bg-sky-100 text-sky-700' },
-    { l: 'Blok Diperiksa', v: angkaID(diperiksa), i: Layers3, kelas: 'bg-emerald-100 text-emerald-700', bar: persen },
-    { l: 'Perlu Tindak Lanjut', v: angkaID(perluTL), i: TriangleAlert, kelas: 'bg-orange-100 text-orange-600' },
-    { l: 'Total Luas Areal', v: `${angkaID(data.masterLuas, 2)} Ha`, i: Leaf, kelas: 'bg-green-100 text-green-700' },
-    { l: 'Total Jumlah Pokok', v: angkaID(data.masterPokok), i: Users, kelas: 'bg-sky-100 text-sky-700' },
+    { l: 'Total Blok', v: angkaID(totalBlok), i: TreePalm, kelas: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' },
+    { l: 'Pemeriksaan', v: angkaID(data.totalRecords), i: ClipboardList, kelas: 'bg-sky-100 dark:bg-sky-500/15 text-sky-700 dark:text-sky-400' },
+    { l: 'Blok Diperiksa', v: angkaID(diperiksa), i: Layers3, kelas: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400', bar: persen },
+    { l: 'Perlu Tindak Lanjut', v: angkaID(perluTL), i: TriangleAlert, kelas: 'bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400' },
+    { l: 'Total Luas Areal', v: `${angkaID(data.masterLuas, 2)} Ha`, i: Leaf, kelas: 'bg-green-100 dark:bg-green-500/15 text-green-700' },
+    { l: 'Total Jumlah Pokok', v: angkaID(data.masterPokok), i: Users, kelas: 'bg-sky-100 dark:bg-sky-500/15 text-sky-700 dark:text-sky-400' },
   ]
+
+  const tanggalHariIni = new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  }).format(new Date())
 
   return (
     <div className="space-y-5">
-      {/* ===== Banner foto kebun sawit (gaya desain HPI) ===== */}
+      {/* ===== Banner sapaan + foto kebun sawit (gaya desain HPI) ===== */}
       <div className="relative overflow-hidden rounded-2xl shadow-md shadow-emerald-900/10">
         <Image
           src="/banner-kebun.jpg"
@@ -164,8 +185,35 @@ export default function DashboardHome() {
           priority
           className="h-44 w-full object-cover sm:h-56 lg:h-64"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/35 via-transparent to-emerald-950/25" />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-right drop-shadow-lg sm:right-8">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/75 via-emerald-950/45 to-emerald-950/25" />
+        <div className="absolute inset-0 flex flex-col justify-center gap-3 px-5 sm:px-8">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-500 text-sm font-bold text-white shadow-lg ring-2 ring-white/40">
+              {(nama || 'CB').trim().split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase() || '').join('')}
+            </span>
+            <div className="leading-tight drop-shadow-md">
+              <h1 className="text-xl font-bold text-white sm:text-2xl">
+                {salam()}{nama ? `, ${nama}` : ''}
+              </h1>
+              <p className="text-xs text-emerald-50/90 sm:text-sm">{tanggalHariIni}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/25 backdrop-blur-sm">
+              Data hari ini: {data.records24h ?? 0}
+            </span>
+            <span className="inline-flex items-center rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/25 backdrop-blur-sm">
+              Blok diperiksa: {angkaID(diperiksa)} / {angkaID(totalBlok)}
+            </span>
+            <span className="inline-flex items-center rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/25 backdrop-blur-sm">
+              Cakupan: {persen}%
+            </span>
+            <span className="inline-flex items-center rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/25 backdrop-blur-sm">
+              Perlu tindak lanjut: {angkaID(perluTL)}
+            </span>
+          </div>
+        </div>
+        <div className="absolute right-4 top-1/2 hidden -translate-y-1/2 text-right drop-shadow-lg sm:right-8 lg:block">
           <LogoBulat className="h-16 w-16 rounded-full shadow-lg ring-2 ring-white/50 sm:h-20 sm:w-20" />
         </div>
       </div>
@@ -173,7 +221,7 @@ export default function DashboardHome() {
       {/* Header ringkasan */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-emerald-950">Ringkasan</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-50">Ringkasan</h1>
           <p className="text-sm text-muted-foreground">
             {scoped
               ? `Lingkup data: kebun ${scoped} (sesuai penugasan akun Anda).`
@@ -200,7 +248,7 @@ export default function DashboardHome() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-medium text-muted-foreground">{k.l}</span>
-                  <span className="block truncate text-lg font-bold tabular-nums text-emerald-950">{k.v}</span>
+                  <span className="block truncate text-lg font-bold tabular-nums text-emerald-950 dark:text-emerald-50">{k.v}</span>
                   {k.bar != null && totalBlok > 0 && (
                     <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-emerald-600/15">
                       <span className="block h-full rounded-full bg-emerald-700" style={{ width: `${Math.max(2, k.bar)}%` }} />
@@ -361,7 +409,7 @@ export default function DashboardHome() {
             </div>
             {adminish && (
               <div className="border-t p-3">
-                <Link href="/dashboard/settings?tab=log" className="text-sm font-medium text-emerald-700 hover:underline">
+                <Link href="/dashboard/settings?tab=log" className="text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:underline">
                   Lihat semua log →
                 </Link>
               </div>
