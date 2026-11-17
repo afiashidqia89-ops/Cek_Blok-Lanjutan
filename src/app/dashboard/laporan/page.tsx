@@ -67,7 +67,7 @@ const MERAH = '#dc2626'
 
 /** 5 item pemeriksaan (sama seperti aplikasi HP) + warna chip masing-masing */
 const ITEM_INFO: { key: keyof Nilai; label: string; satuan: string; kelas: string }[] = [
-  { key: 'semak', label: 'Semak', satuan: 'Ha', kelas: 'bg-emerald-600/10 text-emerald-800 border-emerald-600/25' },
+  { key: 'semak', label: 'Semak', satuan: 'Ha', kelas: 'bg-emerald-600/10 text-emerald-800 dark:text-emerald-300 border-emerald-600/25' },
   { key: 'tunasan', label: 'Tunasan', satuan: 'Pkk', kelas: 'bg-amber-600/10 text-amber-800 border-amber-600/25' },
   { key: 'titi', label: 'Titi Panen', satuan: 'Unit', kelas: 'bg-rose-600/10 text-rose-800 border-rose-600/25' },
   { key: 'kerdil', label: 'Pokok Kerdil', satuan: 'Pkk', kelas: 'bg-purple-600/10 text-purple-800 border-purple-600/25' },
@@ -104,9 +104,9 @@ function chipsTemuan(nilai: Nilai): { key: string; teks: string; kelas: string }
 
 function kelasStatus(s: string): string {
   const st = (s || '').toLowerCase()
-  if (st.includes('prioritas') || st.includes('kritis') || st.includes('buruk') || st.includes('merah')) return 'border-red-600/25 bg-red-600/10 text-red-700'
-  if (st.includes('perbaikan') || st.includes('perhatian') || st.includes('waspada') || st.includes('sedang') || st.includes('kuning')) return 'border-amber-500/25 bg-amber-500/10 text-amber-700'
-  if (st.includes('baik') || st.includes('bagus') || st.includes('hijau')) return 'border-emerald-600/25 bg-emerald-600/10 text-emerald-700'
+  if (st.includes('prioritas') || st.includes('kritis') || st.includes('buruk') || st.includes('merah')) return 'border-red-600/25 bg-red-600/10 text-red-700 dark:text-red-400'
+  if (st.includes('perbaikan') || st.includes('perhatian') || st.includes('waspada') || st.includes('sedang') || st.includes('kuning')) return 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+  if (st.includes('baik') || st.includes('bagus') || st.includes('hijau')) return 'border-emerald-600/25 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400'
   return 'border-slate-400/25 bg-slate-500/10 text-slate-600'
 }
 
@@ -258,7 +258,7 @@ export default function HalamanLaporan() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <BarChart3 className="h-6 w-6 text-emerald-700" /> Rekap &amp; Analitik
+            <BarChart3 className="h-6 w-6 text-emerald-700 dark:text-emerald-400" /> Rekap &amp; Analitik
           </h1>
           <p className="text-sm text-muted-foreground">
             {scoped
@@ -283,7 +283,7 @@ export default function HalamanLaporan() {
               <button
                 key={v}
                 onClick={() => setRentang(v)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${rentang === v ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-900 hover:bg-emerald-600/12'}`}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${rentang === v ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600/12'}`}
               >
                 {l}
               </button>
@@ -350,7 +350,7 @@ export default function HalamanLaporan() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <ListTree className="h-5 w-5 text-emerald-700" /> Rekap Temuan per Kebun, Afdeling &amp; Blok
+                  <ListTree className="h-5 w-5 text-emerald-700 dark:text-emerald-400" /> Rekap Temuan per Kebun, Afdeling &amp; Blok
                 </CardTitle>
                 <CardDescription>
                   Contoh bacaan: <b>BLOK A001 (Tunasan 5 Pkk, Titi Panen 2 Unit)</b> — kumulatif seluruh waktu.
@@ -375,10 +375,10 @@ export default function HalamanLaporan() {
                   <option value="temuan">Urut: Temuan Terbanyak</option>
                   <option value="nama">Urut: Nama A-Z</option>
                 </select>
-                <Button size="sm" variant="outline" className="border-emerald-600/25 text-emerald-900 hover:bg-emerald-600/10" onClick={bukaSemua}>
+                <Button size="sm" variant="outline" className="border-emerald-600/25 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600/10" onClick={bukaSemua}>
                   Buka Semua
                 </Button>
-                <Button size="sm" variant="outline" className="border-emerald-600/25 text-emerald-900 hover:bg-emerald-600/10" onClick={tutupSemua}>
+                <Button size="sm" variant="outline" className="border-emerald-600/25 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600/10" onClick={tutupSemua}>
                   Tutup Semua
                 </Button>
               </div>
@@ -400,11 +400,11 @@ export default function HalamanLaporan() {
                     onClick={() => toggleBuka(kunciKb)}
                     className="flex w-full flex-wrap items-center gap-2 bg-gradient-to-r from-emerald-600/10 to-emerald-600/5 px-3 py-3 text-left transition-colors hover:from-emerald-600/15 sm:px-4"
                   >
-                    {kBuka ? <ChevronDown className="h-5 w-5 shrink-0 text-emerald-700" /> : <ChevronRight className="h-5 w-5 shrink-0 text-emerald-700" />}
-                    <TreePalm className="h-5 w-5 shrink-0 text-emerald-700" />
-                    <span className="font-bold text-emerald-950">{k.nama}</span>
-                    <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-900">{fmtN(k.transaksi)} transaksi</span>
-                    <span className="rounded-full bg-red-600/10 px-2 py-0.5 text-[11px] font-semibold text-red-700">{fmtN(k.temuan)} temuan</span>
+                    {kBuka ? <ChevronDown className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" /> : <ChevronRight className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" />}
+                    <TreePalm className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                    <span className="font-bold text-emerald-950 dark:text-emerald-50">{k.nama}</span>
+                    <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-900 dark:text-emerald-200">{fmtN(k.transaksi)} transaksi</span>
+                    <span className="rounded-full bg-red-600/10 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-400">{fmtN(k.temuan)} temuan</span>
                     <span className="rounded-full bg-slate-500/10 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{k.afdelingList.length} afdeling</span>
                     <span className="flex flex-wrap gap-1">
                       {chipsTemuan(k.nilai).map((c) => (
@@ -431,11 +431,11 @@ export default function HalamanLaporan() {
                               onClick={() => toggleBuka(kunciAf)}
                               className="flex w-full flex-wrap items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-emerald-600/5 sm:px-6"
                             >
-                              {aBuka ? <ChevronDown className="h-4 w-4 shrink-0 text-emerald-700" /> : <ChevronRight className="h-4 w-4 shrink-0 text-emerald-700" />}
-                              <Sprout className="h-4 w-4 shrink-0 text-emerald-700" />
-                              <span className="font-semibold text-emerald-950">Afdeling {a.nama}</span>
-                              <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-900">{fmtN(a.transaksi)} transaksi</span>
-                              <span className="rounded-full bg-red-600/10 px-2 py-0.5 text-[11px] font-semibold text-red-700">{fmtN(a.temuan)} temuan</span>
+                              {aBuka ? <ChevronDown className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" /> : <ChevronRight className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />}
+                              <Sprout className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                              <span className="font-semibold text-emerald-950 dark:text-emerald-50">Afdeling {a.nama}</span>
+                              <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-900 dark:text-emerald-200">{fmtN(a.transaksi)} transaksi</span>
+                              <span className="rounded-full bg-red-600/10 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-400">{fmtN(a.temuan)} temuan</span>
                               <span className="rounded-full bg-slate-500/10 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{a.blokList.length} blok</span>
                               <span className="flex flex-wrap gap-1">
                                 {chipsTemuan(a.nilai).map((c) => (
@@ -458,7 +458,7 @@ export default function HalamanLaporan() {
                                     /* ---- Kartu BLOK: BLOK A001 (Tunasan 5 Pkk, Titi Panen 2 Unit) ---- */
                                     <div key={b.nama} className={`rounded-lg border border-emerald-600/15 bg-white p-3 shadow-sm ${aksenBlok(b.temuan)}`}>
                                       <div className="flex items-center justify-between gap-2">
-                                        <p className="truncate font-bold text-emerald-950">{b.nama}</p>
+                                        <p className="truncate font-bold text-emerald-950 dark:text-emerald-50">{b.nama}</p>
                                         <span className="whitespace-nowrap text-[11px] text-muted-foreground">×{fmtN(b.transaksi)} transaksi</span>
                                       </div>
                                       <div className="mt-1.5 flex flex-wrap gap-1">
@@ -505,7 +505,7 @@ export default function HalamanLaporan() {
         <Card className="border-dashed border-emerald-600/20 bg-emerald-600/10">
           <CardContent className="flex flex-col items-center gap-2 py-14 text-center">
             <Sprout className="h-10 w-10 text-green-300" />
-            <p className="font-semibold text-emerald-950">Belum ada data pemeriksaan</p>
+            <p className="font-semibold text-emerald-950 dark:text-emerald-50">Belum ada data pemeriksaan</p>
             <p className="max-w-md text-sm text-muted-foreground">
               Data muncul otomatis setelah aplikasi HP menekan &quot;Kirim ke Server&quot; atau berkas transfer/Excel diunggah lewat menu Data Pemeriksaan.
             </p>
@@ -537,7 +537,7 @@ export default function HalamanLaporan() {
 
       {report && (
         <>
-          <p className="text-sm font-semibold text-emerald-950">Analitik {rentang === 'all' ? 'seluruh waktu' : `${rentang} hari terakhir`}</p>
+          <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-50">Analitik {rentang === 'all' ? 'seluruh waktu' : `${rentang} hari terakhir`}</p>
 
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Tren harian */}
@@ -631,7 +631,7 @@ export default function HalamanLaporan() {
                         <TableRow key={p.pemeriksa}>
                           <TableCell className="font-medium">{p.pemeriksa}</TableCell>
                           <TableCell className="text-right">
-                            <Badge variant="outline" className="bg-emerald-600/10 text-emerald-900">{p.jumlah}</Badge>
+                            <Badge variant="outline" className="bg-emerald-600/10 text-emerald-900 dark:text-emerald-200">{p.jumlah}</Badge>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -653,8 +653,8 @@ export default function HalamanLaporan() {
               <CardContent className="pt-2">
                 <div className="flex flex-wrap gap-2">
                   {report.topBlok.map((b) => (
-                    <Badge key={b.blok} variant="outline" className="border-emerald-600/20 bg-emerald-600/10 px-3 py-1.5 text-sm text-emerald-950">
-                      {b.blok} <span className="ml-1.5 font-bold text-emerald-700">×{b.jumlah}</span>
+                    <Badge key={b.blok} variant="outline" className="border-emerald-600/20 bg-emerald-600/10 px-3 py-1.5 text-sm text-emerald-950 dark:text-emerald-50">
+                      {b.blok} <span className="ml-1.5 font-bold text-emerald-700 dark:text-emerald-400">×{b.jumlah}</span>
                     </Badge>
                   ))}
                   {!report.topBlok.length && <p className="text-sm text-muted-foreground">Belum ada data.</p>}
@@ -665,10 +665,10 @@ export default function HalamanLaporan() {
 
           {/* Tautan cepat */}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="border-emerald-600/20 text-emerald-900 hover:bg-emerald-600/10" onClick={() => router.push('/dashboard/data')}>
+            <Button variant="outline" className="border-emerald-600/20 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600/10" onClick={() => router.push('/dashboard/data')}>
               <Database className="mr-2 h-4 w-4" /> Lihat Data Lengkap
             </Button>
-            <Button variant="outline" className="border-emerald-600/20 text-emerald-900 hover:bg-emerald-600/10" onClick={() => router.push('/dashboard/peta')}>
+            <Button variant="outline" className="border-emerald-600/20 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600/10" onClick={() => router.push('/dashboard/peta')}>
               <MapIcon className="mr-2 h-4 w-4" /> Buka Peta Blok
             </Button>
             <span className="ml-auto self-center text-xs text-muted-foreground">
