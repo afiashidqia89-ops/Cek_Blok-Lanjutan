@@ -83,7 +83,7 @@ function CeklisLingkup({
         <div className="rounded-md border p-2.5">
           <div className="flex items-center justify-between mb-1.5">
             <Label className="text-xs font-semibold">Estate</Label>
-            <button type="button" className="text-[11px] text-emerald-700 hover:underline"
+            <button type="button" className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline"
               onClick={() => { setSelEstate([]); setSelKebun([]); setSelAfd([]) }}>Semua / bersihkan</button>
           </div>
           <div className="max-h-36 space-y-1.5 overflow-y-auto pr-1">
@@ -134,8 +134,8 @@ function LingkupBadges({ u }: { u: Pick<UserRow, 'estate' | 'kebun' | 'afdeling'
   if (!e.length && !k.length && !a.length) return <span className="text-xs text-muted-foreground">Semua data</span>
   return (
     <div className="flex flex-wrap gap-1">
-      {e.map((x) => <Badge key={`e${x}`} variant="secondary" className="bg-emerald-600/10 text-emerald-700 text-[10px]">Estate {x}</Badge>)}
-      {k.map((x) => <Badge key={`k${x}`} variant="secondary" className="bg-emerald-600/10 text-emerald-900 text-[10px]">Kebun {x}</Badge>)}
+      {e.map((x) => <Badge key={`e${x}`} variant="secondary" className="bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 text-[10px]">Estate {x}</Badge>)}
+      {k.map((x) => <Badge key={`k${x}`} variant="secondary" className="bg-emerald-600/10 text-emerald-900 dark:text-emerald-200 text-[10px]">Kebun {x}</Badge>)}
       {a.map((x) => <Badge key={`a${x}`} variant="secondary" className="bg-lime-500/15 text-lime-300 text-[10px]">Afd {x}</Badge>)}
     </div>
   )
@@ -301,7 +301,7 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       {u.isActive ? (
-                        <Badge className="border-transparent bg-emerald-600/12 text-emerald-900">Aktif</Badge>
+                        <Badge className="border-transparent bg-emerald-600/12 text-emerald-900 dark:text-emerald-200">Aktif</Badge>
                       ) : (
                         <Badge className="border-transparent bg-red-500/15 text-red-600">Nonaktif</Badge>
                       )}
@@ -438,7 +438,7 @@ export default function UsersPage() {
       </Dialog>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-700" /> Super Admin: Data Master, Token, Pengaturan &amp; Log, peran akun</span>
+        <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" /> Super Admin: Data Master, Token, Pengaturan &amp; Log, peran akun</span>
         <span className="flex items-center gap-1"><ShieldOff className="h-3.5 w-3.5" /> Pengguna: data sesuai ceklis penugasannya</span>
       </div>
     </div>
